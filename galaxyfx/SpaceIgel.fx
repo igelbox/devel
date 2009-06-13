@@ -12,22 +12,31 @@ Program{
     autoHarvest: false; //disable backward compatibility mode
 
     options: TuningOptions {
-        cargo: 2,
+        cargo: 0,
         speed: 2,
-        teamwork: 0,
+        teamwork: 2,
         radar: 0
     }
-    var path: ResourceItem[];
-    var term: CargoTerminalItem;
-    var maxClamp: Float;
-    var cargoK: Float;
 
-    function nearestTerminal(): CargoTerminalItem {
+    function inArray( obj: Object, arr: Object[] ): Boolean {
+        for ( o in arr )
+            if ( o == obj )
+              return true;
+        return false;
+    }
+
+    function nearestTerminal( pos: Point ): CargoTerminalItem {
+        if ( sizeof map.terminals == 1 )
+            return map.terminals[0];
         var min = Number.MAX_VALUE;
         var res: CargoTerminalItem;
-        for(t in map.terminals) {
-            var cur = distanceTime(t);
-            if (cur < min) {
+        for( t in map.terminals ) {
+            var cur;
+            if ( pos == null )
+                cur = distanceTime( t )
+            else
+                cur = distanceTime( pos, [t] );
+            if ( cur < min ) {
                 min = cur;
                 res = t;
             }
@@ -35,126 +44,125 @@ Program{
         return res;
     }
 
-
-    function  computePath(): ResourceItem[] {
-        var toterm = cargoK > 0.66;
-        var timeLimit = map.gameTime - time;
-        var maxCost = Number.MIN_VALUE;
-        var res: ResourceItem = null;
-        for(r in map.resources) {
-            if ( r.value < 0.1 )
-                continue;
-            var time;
-            if (toterm) time = distanceTime([r, term])
-            else time = distanceTime([r]);
-            var curCost = Math.min(r.value, maxClamp) / time;
-            if ( time > timeLimit )
-                continue;
-            if (curCost > maxCost) {
-                maxCost = curCost;
-                res = r;
+    function computePath(): ResourceItem[] {
+        var p0: Point = position.sub(Point.rotate(Point{x:50, y:0}, direction));
+        var p00: Point = p0;
+        var p1: Point = position;
+        var cargoLeft = cargoCapacity - cargo;
+        var result: ResourceItem[] = [];
+        while ( cargoLeft > 0 ) {
+            var max: Float = Float.MIN_VALUE;
+            var res: ResourceItem = null;
+            var ntk: Float = cargoLeft / cargoCapacity;
+            for ( r in map.resources ) {
+                if ( (r.value < 0.1) or inArray(r, result) )
+                    continue;
+                var val = Math.min( r.value, cargoLeft );
+                var cur: Float = val / distanceTime(p0, [p1, r]);
+                var curT: Float = val / distanceTime(p0, [p1, r, nearestTerminal(r)]);
+                cur = ntk*cur + (1-ntk)*curT;
+                if ( cur > max ) {
+                    max = cur;
+                    res = r;
+                }
+            }
+            if ( res == null ) {
+//                println("res is null");
+                break;
+            }
+            while ( res != null ) {
+                var old_res: ResourceItem = res;
+                var term = nearestTerminal( old_res );
+                res = null;
+                var v0: Point = res.sub( p1 );
+                var len: Float = v0.length();
+                for ( r in map.resources ) {
+                    if ( (r.value < 0.1) or (r == old_res) or inArray(r, result) )
+                        continue;
+                    var v1: Point = r.sub( p1 );
+                    var proj: Float = Point.dotProduct( v0, v1 )/len;
+                    if ( (proj < 0.0) or (proj < len) or (proj/v1.length() < 0.9) )
+                        continue;
+                    var val = Math.min( r.value+old_res.value, cargoLeft );
+                    var cur: Float = val / (distanceTime(p0, [p1, r, old_res]));
+                    var curT: Float = val / distanceTime(p0, [p1, r, old_res, term]);
+                    cur = ntk*cur + (1-ntk)*curT;
+                    if ( cur > max ) {
+                        max = cur;
+                        res = r;
+                    }
+                }
+                if ( res == null ) {
+                    cargoLeft -= old_res.value;
+//                    print("put:");println(cargoLeft);
+                    insert old_res into result;
+                    if ( sizeof result > 2 ) {
+                        var _0: ResourceItem = result[sizeof result-3];
+                        var _1: ResourceItem = result[sizeof result-2];
+                        var _2: ResourceItem = result[sizeof result-1];
+                        if ( distanceTime(p00, [_1, _0, _2]) < distanceTime(p00, [_0, _1, _2]) ) {
+                            result[sizeof result-3] = _1;
+                            result[sizeof result-2] = _0;
+                            p0 = _1;
+                            p1 = _0;
+                        }
+                    }
+                    p00 = p0;
+                    p0 = p1;
+                    p1 = old_res;
+                    break;
+                }
             }
         }
-        if ( res != null ) {
-          var ff = (not toterm) or (Point.distance(position, res) > Point.distance(res, term));
-          var res2: ResourceItem = null;
-          for(r in map.resources) {
-            if ( (r.value < 0.1) or r.equals(res) )
-                continue;
-            var time: Float;
-            var curCost: Float = 0;
-            var pth: Point[] = null;
-            if (toterm) {
-                if ( ff and not toterm ) pth = [r, res]
-                else pth = [res, r];
-                insert term into pth;
-            } else
-              pth = [res, r];
-            time = distanceTime(pth);
-            if ( time > timeLimit )
-                continue;
-            curCost = Math.min(r.value+res.value, maxClamp) / (time-0.2);
-            if (curCost > maxCost) {
-                maxCost = curCost;
-                res2 = r;
-            }
-          }
-          if (res2 != null) {
-              var d0;
-              var d1;
-              if ( toterm ) {
-                  d0 = distanceTime([res2, res, term]);
-                  d1 = distanceTime([res, res2, term]);
-              } else {
-                  d0 = distanceTime([res2, res]);
-                  d1 = distanceTime([res, res2]);
-              }
-              if ( d0 < d1 )
-                return [res2, res]
-              else
-                return [res, res2];
-          } else
-            return [res];
-        } else
-            return null;
+        return result;
     }
 
 
-    public override function setup():Void{
+    public override function setup(): Void {
     }
 
-    public override function nextStep():Action{
-        if (action == null) {
-            term = nearestTerminal();
-            maxClamp = cargoCapacity - cargo;
-            cargoK = cargo / cargoCapacity;
-            println(cargoK/(distanceTime(term)+0.1));
-            if ((maxClamp == 0) or (cargoK/(distanceTime(term)+0.1) > 0.05)) {
-                return CompoundAction {
-                    actions: [ MoveAction {path: [term]}, UnloadAction {limit: cargo}]
+    public override function nextStep(): Action {
+//        print("pos:");print(position);print(" dir:");print(direction);print(" back:");println(p0);
+        if ( action == null ) {
+            var term = nearestTerminal( null );
+            var leftCK = 1-cargo/cargoCapacity;
+            if ( (leftCK < 0.1) and (leftCK*distanceTime(term) < 0.5) )
+                return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
+            var path = computePath();
+            if ( sizeof path > 0 ) {
+                var acts: Action[] = null;
+                for ( r in path ) {
+                    insert MoveAction {path: [r]} into acts;
+                    insert HarvestAction {limit:r.value} into acts;
                 }
-            } else {
-//                if (sizeof path == 0)
-                path = computePath();
-                if (sizeof path > 0) {
-                    var acts: Action[] = null;
-                    for (r in path) {
-                        insert MoveAction {path: [r]} into acts;
-                        insert HarvestAction {limit: r.value} into acts;
-                    }
-                    return CompoundAction { actions: [acts] }
-                } else
-                //no resources on map
-                if (cargo > 0) {
-                    return CompoundAction {
-                        actions: [ MoveAction {path: [term]}, UnloadAction {limit: cargo}]
-                    }
-                }
+                return CompoundAction { actions: acts };
             }
+            return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
         } else {
             if ( action instanceof CompoundAction ) {
                 var ca = action as CompoundAction;
                 var act = ca.actions[ca.currentIndex];
-                if ( act instanceof MoveAction ) {
-                    var ma: MoveAction = act as MoveAction;
-                    var res: ResourceItem = null;
-                    var p: Point = ma.path[0];
-                    for (r in path)
-                      if (r.equals(p)) {
-                          res = r;
-                          break;
-                      }
-                    if ( (res != null) and (Point.distance(res, position) < radar.range) ) {
-                        for (r in radar.resources)
-                            if (r.equals(res))
-                                return null;
-                        return SpaceScanAction{};
-                    }
+                if ( not((act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof UnloadAction)) ) {
+                    var timeLimit = map.gameTime - time - 10;
+                    var term = nearestTerminal( null );
+                    if ( timeLimit < distanceTime(term) )
+                        return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
                 }
-                return null;
+                if ( (act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof HarvestAction) ) {
+                    if ( (time-map.timestamp) < 50 )
+                        return null;
+                    var ma: MoveAction = act as MoveAction;
+                    var p: Point = ma.path[ma.pathIndex];
+                    if ( Point.distance(p, position) > radar.range )
+                        return null;
+                    for ( r in radar.resources )
+                        if ( r.equals(p) )
+                            return null;
+                    return SpaceScanAction{};
+                }
             }
         }
         return null;
     }
-        
+
 }
