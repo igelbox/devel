@@ -81,7 +81,7 @@ Program{
                         continue;
                     var v1: Point = r.sub( p1 );
                     var proj: Float = Point.dotProduct( v0, v1 )/len;
-                    if ( (proj < 0.0) or (proj < len) or (proj/v1.length() < 0.9) )
+                    if ( (proj < 0.0) or (proj < len) or (proj/v1.length() < 0.85) )
                         continue;
                     var val = Math.min( r.value+old_res.value, cargoLeft );
                     var cur: Float = val / (distanceTime(p0, [p1, r, old_res]));
@@ -149,10 +149,20 @@ Program{
                         return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
                 }
                 if ( (act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof HarvestAction) ) {
-                    if ( (time-map.timestamp) < 50 )
-                        return null;
                     var ma: MoveAction = act as MoveAction;
                     var p: Point = ma.path[ma.pathIndex];
+                    var term = nearestTerminal( null );
+                    var res: ResourceItem = (p as ResourceItem);
+                    var rv = Math.min(res.value, cargoCapacity);
+                    var cargoLeft = cargoCapacity-cargo;
+                    if ( rv > cargoLeft ) {
+                        var s0 = Math.min(rv, cargoLeft) / (distanceTime([p, term]) + 0.1);
+                        var s1 = rv / (distanceTime([term, p]) + 1);
+                        if ( s1 > s0 )
+                            return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
+                    }
+                    if ( (time-map.timestamp) < 50 )
+                        return null;
                     if ( Point.distance(p, position) > radar.range )
                         return null;
                     for ( r in radar.resources )
