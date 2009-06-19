@@ -6,19 +6,22 @@ import galaxyfx.program.TuningOptions;
 import galaxyfx.spacecraft.system.*;
 import java.lang.Math;
 
+class Marker extends ResourceItem {
+    var pos: Point;
+}
+
 Program{
     name: "SpaceIgel"
 
     autoHarvest: false; //disable backward compatibility mode
 
     options: TuningOptions {
-        cargo: 1,
+        cargo: 0,
         speed: 2,
-        teamwork: 1,
+        teamwork: 2,
         radar: 0
     }
 
-    var failCount: Integer = 0;
 
     function inArray( obj: Object, arr: Object[] ): Boolean {
         for ( o in arr )
@@ -63,8 +66,7 @@ Program{
         while ( cargoLeft > 0 ) {
             var max: Float = Float.MIN_VALUE;
             var res: ResourceItem = null;
-            var ntk: Float = cargoLeft / cargoCapacity;
-            ntk = Math.max(ntk-0.2, 0);
+            var ntk: Float = Math.max( cargoLeft/cargoCapacity-0.1, 0 );
             for ( r in map.resources ) {
                 if ( (r.value < 0.1) or inArray(r, result) )
                     continue;
@@ -75,10 +77,8 @@ Program{
                     res = r;
                 }
             }
-            if ( res == null ) {
-//                println("res is null");
+            if ( res == null )
                 break;
-            }
             while ( (res != null) and (cargoLeft > 0) ) {
                 var old_res: ResourceItem = res;
                 var term = nearestTerminal( old_res );
@@ -90,11 +90,14 @@ Program{
                     if ( (r.value < 0.1) or (r == old_res) or inArray(r, result) )
                         continue;
                     var v1: Point = r.sub( p1 );
-                    var proj: Float = Point.dotProduct( v0, v1 );
-                    if ( (proj < 0.0) or (v1.length() >= len) )
-                        continue;
+                    var len1: Float = v1.length();
+                    if ( len1 > 0 ) {
+                        var proj: Float = Point.dotProduct( v0, v1 )/len1/len;
+                        if ( (proj < 0.0) or (len1 >= len) or (proj < 0.866) )
+                            continue;
+                    }
                     var val = Math.min( r.value+old_res.value, cargoLeft );
-                    var cur: Float = val / getDistTime( p0, [p1, r, old_res], term, ntk );
+                    var cur: Float = val / (getDistTime( p0, [p1, r, old_res], term, ntk ) + 1);
                     if ( cur > max ) {
                         max = cur;
                         res = r;
@@ -102,20 +105,17 @@ Program{
                 }
                 if ( res == null ) {
                     var rv = Math.min(old_res.value, cargoCapacity);
-                    if ( rv > cargoLeft ) {
+                    if ( ntk < 0.15 ) {
                         var t0 = distanceTime(p0, [p1, old_res, term]) - distanceTime(p0, [p1, term]);
-                        var s0 = cargoLeft / (t0 + 0.1);
+                        var s0 = Math.min(rv, cargoLeft) / (t0 + 0.1);
                         var t1 = distanceTime(p0, [p1, term, old_res]) - distanceTime(p0, [p1, old_res]);
-                        var s1 = rv / (t1 + 0.1);
-//                        println("s0:{s0} s1:{s1} t0:{t0} t1:{t1}");
+                        var s1 = rv / (t1 + 1);
                         if ( s1 > s0 ) {
-//                            println("goto term!");
-                            insert null into result;
+                            insert Marker{ pos:term } into result;
                             return result;
                         }
                     }
                     cargoLeft -= old_res.value;
-//                    print("put:");println(cargoLeft);
                     insert old_res into result;
                     if ( sizeof result > 2 ) {
                         var _0: ResourceItem = result[sizeof result-3];
@@ -134,9 +134,6 @@ Program{
                     break;
                 } else {
                     max = Math.min( res.value, cargoLeft ) / getDistTime( p0, [p1, res], term, ntk );
-//                    var v1: Point = res.sub( p1 );
-  //                  var proj: Float = Point.dotProduct( v0, v1 );
-    //                println("proj:{proj} len:{len} lenn:{v1.length()} refine:{res}");
                 }
 
             }
@@ -149,18 +146,16 @@ Program{
     }
 
     public override function nextStep(): Action {
-//        print("pos:");print(position);print(" dir:");print(direction);print(" back:");println(p0);
         if ( action == null ) {
             var term = nearestTerminal( null );
-            var leftCK = 1-cargo/cargoCapacity;
-            if ( (leftCK < 0.1) and (leftCK*distanceTime(term) < 0.5) )
+            if ( cargo == cargoCapacity )
                 return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
             var path = computePath();
             if ( sizeof path > 0 ) {
                 var acts: Action[] = null;
                 for ( r in path ) {
-                    if ( r == null ) {
-                        insert MoveAction {path: [term]} into acts;
+                    if ( r instanceof Marker ) {
+                        insert MoveAction {path: [(r as Marker).pos]} into acts;
                         insert UnloadAction {} into acts;
                         break;
                     }
@@ -177,21 +172,19 @@ Program{
                 if ( not((act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof UnloadAction)) ) {
                     var timeLimit = map.gameTime - time - 10;
                     var term = nearestTerminal( null );
-                    if ( timeLimit < (distanceTime(term)+10) )
+                    if ( timeLimit < (distanceTime(term)+20) )
                         return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
                 }
-                if ( (act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof HarvestAction) ) {
+                if ( ((time-map.timestamp) > 60) and (act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof HarvestAction) ) {
                     var ma: MoveAction = act as MoveAction;
                     var p: Point = ma.path[ma.pathIndex];
                     if ( Point.distance(p, position) > radar.range )
                         return null;
+                    var val: Float = (p as ResourceItem).value;
                     for ( r in radar.resources )
                         if ( r.equals(p) )
+                          if ( (r.value/val) >= 0.75 )
                             return null;
-                    failCount++;
-                    if ( ((time-map.timestamp) < 50) and (failCount < 3) )
-                        return null;
-                    failCount = 0;
                     return SpaceScanAction{};
                 }
             }
