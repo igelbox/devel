@@ -82,6 +82,7 @@ Program{
             while ( (res != null) and (cargoLeft > 0) ) {
                 var old_res: ResourceItem = res;
                 var term = nearestTerminal( old_res );
+                max = Math.min( old_res.value, cargoLeft ) / getDistTime( p0, [p1, old_res], term, ntk );
                 res = null;
                 var v0: Point = old_res.sub( p1 );
                 var len: Float = v0.length();
@@ -97,7 +98,7 @@ Program{
                             continue;
                     }
                     var val = Math.min( r.value+old_res.value, cargoLeft );
-                    var cur: Float = val / (getDistTime( p0, [p1, r, old_res], term, ntk ) + 1);
+                    var cur: Float = val / (getDistTime( p0, [p1, r, old_res], term, ntk ) + timeToComplete(HarvestAction{target:r,limit:r.value}, null));
                     if ( cur > max ) {
                         max = cur;
                         res = r;
@@ -109,7 +110,7 @@ Program{
                         var t0 = distanceTime(p0, [p1, old_res, term]) - distanceTime(p0, [p1, term]);
                         var s0 = Math.min(rv, cargoLeft) / (t0 + 0.1);
                         var t1 = distanceTime(p0, [p1, term, old_res]) - distanceTime(p0, [p1, old_res]);
-                        var s1 = rv / (t1 + 1);
+                        var s1 = rv / (t1 + timeToComplete(UnloadAction{}, null));
                         if ( s1 > s0 ) {
                             insert Marker{ pos:term } into result;
                             return result;
@@ -132,10 +133,7 @@ Program{
                     p0 = p1;
                     p1 = old_res;
                     break;
-                } else {
-                    max = Math.min( res.value, cargoLeft ) / getDistTime( p0, [p1, res], term, ntk );
                 }
-
             }
         }
         return result;
@@ -171,9 +169,9 @@ Program{
                 var act = ca.actions[ca.currentIndex];
                 if ( not((act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof UnloadAction)) ) {
                     var timeLimit = map.gameTime - time - 10;
-                    var term = nearestTerminal( null );
-                    if ( timeLimit < (distanceTime(term)+20) )
-                        return CompoundAction { actions: [ MoveAction {path: [term]}, UnloadAction {}] };
+                    var cact = CompoundAction { actions: [ MoveAction {path: [nearestTerminal(null)]}, UnloadAction {}] };
+                    if ( timeLimit < timeToComplete(cact, null) )
+                        return cact;
                 }
                 if ( ((time-map.timestamp) > 60) and (act instanceof MoveAction) and (ca.actions[ca.currentIndex+1] instanceof HarvestAction) ) {
                     var ma: MoveAction = act as MoveAction;
