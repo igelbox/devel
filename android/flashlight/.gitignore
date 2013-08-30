@@ -1,0 +1,5 @@
+ant.properties
+local.properties
+nbandroid/
+private/
+res/drawable-*
