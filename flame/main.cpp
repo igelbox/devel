@@ -237,14 +237,10 @@ void redisplay() {
 	    }; break;
 	case 2: {
 		glColorMask(1, 0, 0, 0);
-		for ( int j = 0; j < SZ; j++ )
-		    for ( int i = 0; i < SZ; i++ ) f[j][i] = ff[j][i];
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, SZ, SZ, 0, GL_LUMINANCE, GL_FLOAT, f);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, SZ, SZ, 0, GL_LUMINANCE, GL_FLOAT, ff);
 		drawQuad();
 		glColorMask(0, 0, 1, 0);
-		for ( int j = 0; j < SZ; j++ )
-		    for ( int i = 0; i < SZ; i++ ) f[j][i] = fo[j][i];
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, SZ, SZ, 0, GL_LUMINANCE, GL_FLOAT, f);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, SZ, SZ, 0, GL_LUMINANCE, GL_FLOAT, fo);
 		drawQuad();
 	    }; break;
     }
@@ -268,7 +264,7 @@ void idle() {
 //    init(1*SZ/3, SZ/8, 0.1f, 64);
 //    init(2*SZ/3, SZ/8, 0.1f, 64);
 //    for ( int i = SZ/10; i < 9*SZ/10; i++ ) init( i, 1, 0.03, 1);
-    for ( int i = -SZ/2; i <= SZ/2; i++ ) {
+    for ( int i = -SZ/4; i <= SZ/4; i++ ) {
 	addFixel( vfx[0], SZ/2+i, 3, frand()*2.0f);
 	addFixel( vfy[0], SZ/2+i, 3, (frand()*0.3f+0.7f)*2.0f);
 	addFixel(  fo[0], SZ/2+i, 3, 1.0f);
