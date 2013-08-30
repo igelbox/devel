@@ -5,12 +5,17 @@ import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
 import ccs.rocky.core.Port.Input;
 import ccs.rocky.core.Port.Output;
+import ccs.rocky.jack.JackModule;
+import ccs.rocky.persistent.Loader;
+import ccs.rocky.persistent.Storage;
+import ccs.rocky.persistent.Storer;
 import ccs.rocky.ui.views.*;
 import ccs.util.Iterabled;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.*;
 import javax.swing.JComponent;
 
@@ -46,6 +51,7 @@ public class ModulePanel extends JComponent {
                     nodes.remove( n );
                     nodes.put( n, nv );
                 }
+                ModulePanel.this.onSelectionChanged( selected );
             }
             ModulePanel.this.repaint();
         }
@@ -81,6 +87,7 @@ public class ModulePanel extends JComponent {
                 for ( View v : allViews )
                     v.select( selection, selected );
                 selection = null;
+                ModulePanel.this.onSelectionChanged( selected );
             }
             ModulePanel.this.repaint();
         }
@@ -88,6 +95,7 @@ public class ModulePanel extends JComponent {
     private Rectangle selection;
     private final ViewsFactory vf = new ViewsFactory();
     private final Snap snap = new Snap( 8 );
+    private final Storage storage;
     private final Module module;
     private final Map<Node, NodeView> nodes = new LinkedHashMap<Node, NodeView>();
     private final Collection<View> selected = new HashSet<View>();
@@ -146,14 +154,14 @@ public class ModulePanel extends JComponent {
         }
     };
 
-    public ModulePanel( Module module ) {
-        this.module = module;
+    public ModulePanel( Storage storage ) throws IOException {
+        this.storage = storage;
+        this.module = new JackModule();
+        this.module.load( storage.nodes() );
         module.listen( ml );
-        setPreferredSize( new Dimension( 640, 480 ) );
         addMouseListener( mouseAdapter );
         addMouseMotionListener( mouseAdapter );
         setDoubleBuffered( false );
-        Random r = new Random( 0 );
         for ( Node n : module ) {
             NodeView v = vf.createView( n );
             nodes.put( n, v );
@@ -164,8 +172,14 @@ public class ModulePanel extends JComponent {
             }
             for ( PortView<Port.Output> p : v.outputs() )
                 ports.put( p.port(), p );
-            v.x = r.nextInt( 600 );
-            v.y = r.nextInt( 400 );
+            if ( n.descriptor().system() )
+                if ( !n.inputs().iterator().hasNext() ) {
+                    v.x = 50;
+                    v.y = 50;
+                } else if ( !n.outputs().iterator().hasNext() ) {
+                    v.x = 500;
+                    v.y = 50;
+                }
         }
         for ( Node n : module )
             for ( Port.Input p : n.inputs() )
@@ -175,6 +189,29 @@ public class ModulePanel extends JComponent {
                     LinkView l = vf.createLink( o, i );
                     links.put( p, l );
                 }
+        for ( Loader.Attribute a : storage.view() )
+            if ( "place".equals( a.name ) ) {
+                Loader l = a.asLoader();
+                int ref = l.findAttribute( "node" ).asInt();
+                int x = l.findAttribute( "x" ).asInt();
+                int y = l.findAttribute( "y" ).asInt();
+                for ( NodeView v : nodes.values() )
+                    if ( ref == v.node().id() ) {
+                        v.x = x;
+                        v.y = y;
+                        break;
+                    }
+            }
+        int mx = 0, my = 0;
+        for ( NodeView v : nodes.values() ) {
+            mx = Math.max( mx, v.x );
+            my = Math.max( my, v.y );
+        }
+        setPreferredSize( new Dimension( mx, my ) );
+    }
+
+    public Module module() {
+        return module;
     }
 
     @Override
@@ -230,5 +267,32 @@ public class ModulePanel extends JComponent {
             }
         }
         return _bg;
+    }
+
+    private void store( Storer storer ) {
+        storer.putInt( "version", 0 );
+        for ( NodeView v : nodes.values() ) {
+            Storer s = storer.put( "place" );
+            s.putInt( "node", v.node().id() );
+            s.putInt( "x", v.x );
+            s.putInt( "y", v.y );
+        }
+    }
+
+    public void store() throws IOException {
+        {
+            Storer s = new Storer();
+            module.store( s );
+            storage.nodes( s );
+        }
+        {
+            Storer s = new Storer();
+            store( s );
+            storage.view( s );
+        }
+        storage.flush();
+    }
+
+    protected void onSelectionChanged( Collection<View> selection ) {
     }
 }

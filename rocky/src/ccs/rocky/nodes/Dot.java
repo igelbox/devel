@@ -1,7 +1,6 @@
 package ccs.rocky.nodes;
 
 import ccs.rocky.core.Node;
-import ccs.rocky.core.NodeDescriptor;
 import ccs.rocky.core.Port;
 import ccs.rocky.persistent.Loader;
 import ccs.util.Iterabled;
@@ -12,7 +11,7 @@ import ccs.util.Iterabled;
  */
 public class Dot extends Node {
 
-    public static class Descriptor extends NodeDescriptor<Dot> {
+    private static class Descr extends Descriptor<Dot> {
 
         @Override
         public String caption() {
@@ -25,23 +24,32 @@ public class Dot extends Node {
         }
 
         @Override
-        public Dot createNode() {
-            return new Dot();
+        public Dot createNode( int id ) {
+            return new Dot( id, this );
         }
 
         @Override
         public Dot loadNode( Loader loader ) {
-            return new Dot();
+            return new Dot( this, loader );
         }
     }
-    private final Port.Output output = new Port.Output( this );
+    public static final Descriptor<Dot> DESCRIPTOR = new Descr();
+    private final Port.Output output = new Port.Output( 0, this );
     private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
-    private final Port.Input input = new Port.Input( this );
+    private final Port.Input input = new Port.Input( 0, this );
     private final Iterable<Port.Input> inputs = new Iterabled.Element<Port.Input>( input );
+
+    public Dot( int id, Descriptor<?> descriptor ) {
+        super( id, descriptor );
+    }
+
+    public Dot( Descriptor<?> descriptor, Loader loader ) {
+        super( descriptor, loader );
+    }
 
     @Override
     public String caption() {
-        return ".";
+        return "@";
     }
 
     @Override

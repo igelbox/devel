@@ -1,6 +1,6 @@
 package ccs.rocky.core;
 
-import ccs.rocky.core.Node.Listener.PortOp;
+//import ccs.rocky.core.Node.Listener.PortOp;
 import ccs.util.Cloud;
 
 /**
@@ -11,8 +11,11 @@ public class Port {
 
     public static class Output extends Port {
 
-        public Output( Node node ) {
-            super( node );
+        public Output( int id, Node node ) {
+            super( id, node );
+        }
+
+        protected void connected( Input p, boolean connected ) {
         }
     }
 
@@ -26,15 +29,24 @@ public class Port {
         private final Node.Listener nl = new Node.Listener() {
 
             @Override
-            protected void notifyPort( Port port, PortOp op ) {
-                if ( (port == connected) && (op == PortOp.DEL) )
-                    connect( null );
+            protected void notifyDelete() {
+                connect( null );
+            }
+
+//            @Override
+//            protected void notifyPort( Port port, PortOp op ) {
+//                if ( (port == connected) && (op == PortOp.DEL) )
+//                    connect( null );
+//            }
+            @Override
+            protected void notifyFlow() {
+                node().notifyFlow();
             }
         };
         private final Cloud<Listener> listeners = new Cloud<Listener>();
 
-        public Input( Node node ) {
-            super( node );
+        public Input( int id, Node node ) {
+            super( id, node );
         }
         protected Output connected;
 
@@ -43,11 +55,18 @@ public class Port {
         }
 
         public void connect( Output to ) {
+            if ( connected != null ) {
+                connected.node().unlisten( nl );
+                connected.connected( this, false );
+            }
             connected = to;
-            if ( to != null )
-                to.node().listen( nl );
+            if ( connected != null ) {
+                connected.node().listen( nl );
+                connected.connected( this, true );
+            }
             for ( Listener l : listeners )
                 l.notifyConnected( this, to );
+            node().notifyFlow();
         }
 
         public boolean listen( Listener listener ) {
@@ -58,10 +77,20 @@ public class Port {
             return listeners.remove( listener );
         }
     }
+    private final int id;
     private final Node node;
 
-    public Port( Node node ) {
+    public Port( int id, Node node ) {
+        this.id = id;
         this.node = node;
+    }
+
+    public int id() {
+        return id;
+    }
+
+    public String idWithNode() {
+        return String.format( "%d.%d", node.id(), id );
     }
 
     public Node node() {

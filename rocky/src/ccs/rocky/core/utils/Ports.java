@@ -28,6 +28,10 @@ public class Ports<T extends Port> implements Iterable<T> {
         return r;
     }
 
+    public int size() {
+        return ports.size();
+    }
+
     @Override
     public Iterator<T> iterator() {
         return ports.iterator();

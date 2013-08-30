@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="jack" default="build" basedir=".">
+    <target name="clean">
+        <delete dir="build"/>
+        <delete file="jack.jar"/>
+    </target>
     <target name="build">
+        <mkdir dir="build"/>
         <javac srcdir="src" destdir="build" debug="true" includeantruntime="false"/>
         <exec executable="make" failonerror="true">
             <arg value="-f"/>

@@ -7,42 +7,42 @@ import ccs.rocky.persistent.Loader;
  *
  * @author igel
  */
-public class Sum extends AbstractOp {
+public class Pow extends AbstractOp {
 
-    private static class Descr extends Descriptor<Sum> {
+    private static class Descr extends Descriptor<Pow> {
 
         @Override
         public String caption() {
-            return "sum";
+            return "power";
         }
 
         @Override
         public String tag() {
-            return "sum";
+            return "pow";
         }
 
         @Override
-        public Sum createNode( int id ) {
-            return new Sum( id, this );
+        public Pow createNode( int id ) {
+            return new Pow( id, this );
         }
 
         @Override
-        public Sum loadNode( Loader loader ) {
-            return new Sum( this, loader );
+        public Pow loadNode( Loader loader ) {
+            return new Pow( this, loader );
         }
     }
-    public static final Descriptor<Sum> DESCRIPTOR = new Descr();
+    public static final Descriptor<Pow> DESCRIPTOR = new Descr();
     private final Port.Input inputX = new Port.Input( 0, this );
     private final Port.Input inputY = new Port.Input( 1, this );
 
-    public Sum( int id, Descriptor<?> descriptor ) {
-        super( id, descriptor, "+" );
+    public Pow( int id, Descriptor<?> descriptor ) {
+        super( id, descriptor, "^" );
         inputs.add( inputX );
         inputs.add( inputY );
     }
 
-    public Sum( Descriptor<?> descriptor, Loader loader ) {
-        super( descriptor, loader, "+" );
+    public Pow( Descriptor<?> descriptor, Loader loader ) {
+        super( descriptor, loader, "^" );
         inputs.add( inputX );
         inputs.add( inputY );
     }

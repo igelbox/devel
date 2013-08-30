@@ -6,6 +6,7 @@ package ccs.rocky.ui;
  */
 public class Snap {
 
+    public static final Snap NO_SNAP = new Snap( 1 );
     public final int step;
 
     public Snap( int step ) {

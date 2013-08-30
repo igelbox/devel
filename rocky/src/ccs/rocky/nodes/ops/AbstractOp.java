@@ -1,9 +1,9 @@
 package ccs.rocky.nodes.ops;
 
 import ccs.rocky.core.Node;
-import ccs.rocky.core.NodeDescriptor;
 import ccs.rocky.core.Port;
 import ccs.rocky.core.utils.Ports;
+import ccs.rocky.persistent.Loader;
 import ccs.util.Iterabled;
 
 /**
@@ -13,12 +13,17 @@ import ccs.util.Iterabled;
 public abstract class AbstractOp extends Node {
 
     private final String caption;
-    private final Port.Output output = new Port.Output( this );
+    private final Port.Output output = new Port.Output( 0, this );
     private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
     protected final Ports<Port.Input> inputs = new Ports<Port.Input>();
 
-    public AbstractOp( int id, NodeDescriptor<?> descriptor, String caption ) {
+    public AbstractOp( int id, Descriptor<?> descriptor, String caption ) {
         super( id, descriptor );
+        this.caption = caption;
+    }
+
+    public AbstractOp( Descriptor<?> descriptor, Loader loader, String caption ) {
+        super( descriptor, loader );
         this.caption = caption;
     }
 

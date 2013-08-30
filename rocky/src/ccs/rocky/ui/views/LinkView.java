@@ -4,6 +4,7 @@ import ccs.rocky.core.Port;
 import ccs.rocky.core.Port.Input;
 import ccs.rocky.core.Port.Output;
 import ccs.util.VMath;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Shape;
@@ -82,7 +83,24 @@ public class LinkView extends View {
 
     @Override
     public void paint( Graphics2D g, Collection<View> selected ) {
-        g.setColor( selected.contains( this ) ? PAINT_SELECTED : PAINT_DEFAULT );
+        Color c;
+        if ( selected.contains( this ) )
+            c = PAINT_SELECTED;
+        else
+            switch ( from.node().node().state() ) {
+                case CONST:
+                    c = Color.GRAY;
+                    break;
+                case VAR:
+                    c = Color.BLUE;
+                    break;
+                case SIGNAL:
+                    c = Color.ORANGE;
+                    break;
+                default:
+                    c = PAINT_DEFAULT;
+            }
+        g.setColor( c );
 //        Shape s = shape();
 //        double[] pp = new double[2], o = null;
 //        for ( PathIterator pi = s.getPathIterator( null, 1 ); !pi.isDone(); pi.next() ) {

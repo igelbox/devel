@@ -1,6 +1,5 @@
 package ccs.rocky.nodes.ops;
 
-import ccs.rocky.core.NodeDescriptor;
 import ccs.rocky.core.Port;
 import ccs.rocky.persistent.Loader;
 
@@ -10,7 +9,7 @@ import ccs.rocky.persistent.Loader;
  */
 public class Abs extends AbstractOp {
 
-    private static class Descriptor extends NodeDescriptor<Abs> {
+    private static class Descr extends Descriptor<Abs> {
 
         @Override
         public String caption() {
@@ -23,20 +22,25 @@ public class Abs extends AbstractOp {
         }
 
         @Override
-        public Abs createNode() {
-            return new Abs( 0, this );
+        public Abs createNode( int id ) {
+            return new Abs( id, this );
         }
 
         @Override
         public Abs loadNode( Loader loader ) {
-            return new Abs( 0, this );
+            return new Abs( this, loader );
         }
     }
-    public static final NodeDescriptor<?> DESCRIPTOR = new Descriptor();
-    private final Port.Input input = new Port.Input( this );
+    public static final Descriptor<Abs> DESCRIPTOR = new Descr();
+    private final Port.Input input = new Port.Input( 0, this );
 
-    public Abs( int id, NodeDescriptor<?> descriptor ) {
+    public Abs( int id, Descriptor<?> descriptor ) {
         super( id, descriptor, "|x|" );
+        inputs.add( input );
+    }
+
+    public Abs( Descriptor<?> descriptor, Loader loader ) {
+        super( descriptor, loader, "|x|" );
         inputs.add( input );
     }
 
