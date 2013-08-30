@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="jack" default="build" basedir=".">
+    <target name="build">
+        <javac srcdir="src" destdir="build" debug="true" includeantruntime="false"/>
+        <exec executable="make" failonerror="true">
+            <arg value="-f"/>
+            <arg value="Makefile.jni"/>
+        </exec>
+        <jar jarfile="jack.jar">
+            <fileset dir="build"/>
+        </jar>
+    </target>
+</project>

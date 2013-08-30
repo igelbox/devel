@@ -1,0 +1,4 @@
+all:
+	javah -classpath build -d src ccs.jack.Jack
+	javah -classpath build -d src ccs.jack.Client
+	gcc src/*.c -o build/libjack.so -shared -fPIC -I/usr/lib/jvm/java-6-openjdk/include -I/usr/lib/jvm/java-6-openjdk/include/linux -ljack
