@@ -63,7 +63,7 @@ public class Compilator extends ClassLoader {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 {
                     mv.visitVarInsn( Opcodes.ALOAD, 1 );
-                    mv.visitLdcInsn( n.id() );
+                    mv.visitLdcInsn( n.id );
                     mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, tModule.getInternalName(), "findNodeById", Type.getMethodDescriptor( tNode, Type.INT_TYPE ) );
                 }
                 mv.visitTypeInsn( Opcodes.CHECKCAST, Type.getInternalName( n.getClass() ) );
@@ -71,17 +71,17 @@ public class Compilator extends ClassLoader {
             }
             Node nf = null;
             for ( Port p : Iterabled.multi( sinks, sources ) ) {
-                Node n = p.node();
+                Node n = p.node;
                 if ( nf != n ) {
                     mv.visitVarInsn( Opcodes.ALOAD, 1 );
-                    mv.visitLdcInsn( p.node().id() );
+                    mv.visitLdcInsn( p.node.id );
                     mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, tModule.getInternalName(), "findNodeById", Type.getMethodDescriptor( tNode, Type.INT_TYPE ) );
                     mv.visitVarInsn( Opcodes.ASTORE, 2 );
                     nf = n;
                 }
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 mv.visitVarInsn( Opcodes.ALOAD, 2 );
-                mv.visitLdcInsn( p.id() );
+                mv.visitLdcInsn( p.id );
                 mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, tNode.getInternalName(), "findPortById", Type.getMethodDescriptor( tPort, Type.INT_TYPE ) );
                 if ( p instanceof Source ) {
                     mv.visitTypeInsn( Opcodes.CHECKCAST, tSrc.getInternalName() );
@@ -96,7 +96,6 @@ public class Compilator extends ClassLoader {
             mv.visitEnd();
         }
         {
-            Label loop = new Label();
             MethodVisitor mv = cw.visitMethod( Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, "process", "(F)V", null, null );
             Generatable.Locals locals = new Generatable.Locals() {
                 int gen = 3;
@@ -127,12 +126,14 @@ public class Compilator extends ClassLoader {
                 }
             };
             mv.visitCode();
-            mv.visitIntInsn( Opcodes.SIPUSH, samples - 1 );
-            mv.visitVarInsn( Opcodes.ISTORE, locals.sampleVar() );
+            Collection<Buff> bufs = new ArrayList<Buff>();
             for ( Node n : module )
-                if ( used.contains( n ) )
+                if ( used.contains( n ) ) {
                     if ( n instanceof Generatable )
                         ((Generatable) n).generator().gen_prolog( mv, locals, samples, samplerate );
+                    if ( n instanceof Buff )
+                        bufs.add( (Buff) n );
+                }
             Map<Object, Integer> imap = new HashMap<Object, Integer>();
 //            for ( Buff b : bufs ) {
 //                mv.visitVarInsn( Opcodes.ALOAD, 0 );
@@ -191,15 +192,38 @@ public class Compilator extends ClassLoader {
                         omap.put( e.getKey(), id );
                     }
             }
+            Type tBuff = Type.getType( Buff.class );
+            Map<Port.Output, Integer> _omap = new HashMap<Port.Output, Integer>( omap );
+            for ( Buff b : bufs ) {
+                mv.visitVarInsn( Opcodes.ALOAD, 0 );
+                mv.visitFieldInsn( Opcodes.GETFIELD, clazz, fieldFN( b ), tBuff.getDescriptor() );
+                mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, tBuff.getInternalName(), "rt_begin", "()V" );
+
+                mv.visitIntInsn( Opcodes.SIPUSH, samples - 1 );
+                mv.visitVarInsn( Opcodes.ISTORE, locals.sampleVar() );
+                Label loop = new Label();
+                mv.visitLabel( loop );
+                //begin
+                for ( Port.Input i : b.inputs() ) {
+                    mv.visitVarInsn( Opcodes.ALOAD, b.inArrLocalNo( i ) );
+                    mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
+                    gen( mv, i, imap, _omap, locals );
+                    mv.visitInsn( Opcodes.FASTORE );
+                }
+                //end
+                mv.visitIincInsn( locals.sampleVar(), -1 );
+                mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
+                mv.visitJumpInsn( Opcodes.IFGE, loop );
+
+                mv.visitVarInsn( Opcodes.ALOAD, 0 );
+                mv.visitFieldInsn( Opcodes.GETFIELD, clazz, fieldFN( b ), tBuff.getDescriptor() );
+                mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, tBuff.getInternalName(), "rt_frame", "()V" );
+            }
+            mv.visitIntInsn( Opcodes.SIPUSH, samples - 1 );
+            mv.visitVarInsn( Opcodes.ISTORE, locals.sampleVar() );
+            Label loop = new Label();
             mv.visitLabel( loop );
             //begin
-//            for ( Buff b : bufs ) {
-//                Port.Input i = b.input();
-//                mv.visitVarInsn( Opcodes.ALOAD, imap.get( i ) );
-//                mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
-//                gen( mv, i, imap, omap, locals );
-//                mv.visitInsn( Opcodes.FASTORE );
-//            }
             for ( Port.Input i : sinks ) {
                 mv.visitVarInsn( Opcodes.ALOAD, imap.get( i ) );
                 mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
@@ -210,11 +234,6 @@ public class Compilator extends ClassLoader {
             mv.visitIincInsn( locals.sampleVar(), -1 );
             mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
             mv.visitJumpInsn( Opcodes.IFGE, loop );
-//            for ( Buff b : bufs ) {
-//                mv.visitVarInsn( Opcodes.ALOAD, 0 );
-//                mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldFN( b ), 'L' + c_buf + ';' );
-//                mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_buf, "add", "()V" );
-//            }
             mv.visitInsn( Opcodes.RETURN );
             mv.visitMaxs( 1, 1 );
             mv.visitEnd();
@@ -230,19 +249,19 @@ public class Compilator extends ClassLoader {
             mv.visitLdcInsn( 0.0f );
             return;
         }
+        if ( o.node instanceof Buff ) {
+            ((Generatable) o.node).generator().gen_inloop( mv, o );
+            return;
+        }
         Integer lvo = omap.get( o );
         if ( (lvo == null) || (lvo > 0) ) {
             Integer lvi = imap.get( o );
-            if ( lvi != null )
-                if ( o.node() instanceof Buff )
-                    mv.visitVarInsn( Opcodes.FLOAD, lvi );
-                else {
-                    mv.visitVarInsn( Opcodes.ALOAD, lvi );
-                    mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
-                    mv.visitInsn( Opcodes.FALOAD );
-                }
-            else {
-                Node node = o.node();
+            if ( lvi != null ) {
+                mv.visitVarInsn( Opcodes.ALOAD, lvi );
+                mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
+                mv.visitInsn( Opcodes.FALOAD );
+            } else {
+                Node node = o.node;
                 for ( Port.Input p : node.inputs() )
                     gen( mv, p, imap, omap, locals );
                 if ( node instanceof Generatable )
@@ -273,11 +292,11 @@ public class Compilator extends ClassLoader {
     }
 
     private static String fieldSS( String pfx, Port p ) {
-        return String.format( "%s%08X_%02X", pfx, p.node().id(), p.id() );
+        return String.format( "%s%08X_%02X", pfx, p.node.id, p.id );
     }
 
     private static String fieldFN( Node n ) {
-        return String.format( "%s%08X", n.getClass().getSimpleName().toLowerCase(), n.id() );
+        return String.format( "%s%08X", n.getClass().getSimpleName().toLowerCase(), n.id );
     }
 
     private static void used( Set<Object> s, Port.Input i ) {
@@ -286,7 +305,7 @@ public class Compilator extends ClassLoader {
             return;
         if ( !s.add( o ) )
             return;
-        Node n = o.node();
+        Node n = o.node;
         if ( !s.add( n ) )
             return;
         for ( Port.Input p : n.inputs() )

@@ -35,10 +35,6 @@ public interface Generatable {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 mv.visitFieldInsn( Opcodes.GETFIELD, locals.clazz(), locals.fieldName( n ), Type.getDescriptor( n.getClass() ) );
             }
-
-            @Override
-            public void gen_prolog( MethodVisitor mv, Locals locals, int samples, int samplerate ) {
-            }
         }
 
         public void gen_prolog( MethodVisitor mv, Locals locals, int samples, int samplerate ) {

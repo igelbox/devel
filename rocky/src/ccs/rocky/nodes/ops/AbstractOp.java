@@ -14,8 +14,28 @@ import org.objectweb.asm.MethodVisitor;
  */
 public abstract class AbstractOp extends Node implements Generatable {
 
-    private final String caption;
-    private final Port.Output output = new Port.Output( 0, this );
+    public static abstract class Single extends AbstractOp {
+
+        private final Port.Input input = new Port.Input( "in", this, null );
+
+        public Single( String id, Loader loader ) {
+            super( id, loader );
+            inputs.add( input );
+        }
+    }
+
+    public static abstract class Double extends AbstractOp {
+
+        private final Port.Input inputX = new Port.Input( "inX", this, null );
+        private final Port.Input inputY = new Port.Input( "inY", this, null );
+
+        public Double( String id, Loader loader ) {
+            super( id, loader );
+            inputs.add( inputX );
+            inputs.add( inputY );
+        }
+    }
+    private final Port.Output output = new Port.Output( "out", this, null );
     private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
     protected final Ports<Port.Input> inputs = new Ports<Port.Input>();
     private final Generatable.Generator gen = new Generator() {
@@ -25,19 +45,8 @@ public abstract class AbstractOp extends Node implements Generatable {
         }
     };
 
-    public AbstractOp( int id, Descriptor<?> descriptor, String caption ) {
-        super( id, descriptor );
-        this.caption = caption;
-    }
-
-    public AbstractOp( Descriptor<?> descriptor, Loader loader, String caption ) {
-        super( descriptor, loader );
-        this.caption = caption;
-    }
-
-    @Override
-    public final String caption() {
-        return caption;
+    public AbstractOp( String id, Loader loader ) {
+        super( id, loader );
     }
 
     @Override

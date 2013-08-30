@@ -10,41 +10,10 @@ import org.objectweb.asm.Type;
  *
  * @author igel
  */
-public class Exp extends AbstractOp {
+public class Exp extends AbstractOp.Single {
 
-    private static class Descr extends Descriptor<Exp> {
-
-        @Override
-        public String caption() {
-            return "exp";
-        }
-
-        @Override
-        public String tag() {
-            return "exp";
-        }
-
-        @Override
-        public Exp createNode( int id ) {
-            return new Exp( id, this );
-        }
-
-        @Override
-        public Exp loadNode( Loader loader ) {
-            return new Exp( this, loader );
-        }
-    }
-    public static final Descriptor<Exp> DESCRIPTOR = new Descr();
-    private final Port.Input input = new Port.Input( 0, this );
-
-    public Exp( int id, Descriptor<?> descriptor ) {
-        super( id, descriptor, "exp" );
-        inputs.add( input );
-    }
-
-    public Exp( Descriptor<?> descriptor, Loader loader ) {
-        super( descriptor, loader, "exp" );
-        inputs.add( input );
+    public Exp( String id, Loader loader ) {
+        super( id, loader );
     }
 
     @Override

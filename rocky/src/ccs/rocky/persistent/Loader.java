@@ -52,6 +52,7 @@ public class Loader implements Iterable<Loader.Attribute> {
             return name + "=" + value;
         }
     }
+    public static final Loader VOID = new Loader();
     protected final Collection<Attribute> attributes = new ArrayList<Attribute>( 0 );
 
     public Loader() {
@@ -84,7 +85,6 @@ public class Loader implements Iterable<Loader.Attribute> {
             final Stack<Loader> st = new Stack<Loader>();
             final Loader result = new Loader();
             p.parse( in, new DefaultHandler() {
-
                 @Override
                 public void startElement( String uri, String localName, String qName, Attributes attributes ) throws SAXException {
                     Loader l;

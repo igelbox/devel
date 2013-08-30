@@ -3,13 +3,12 @@ package ccs.rocky.core;
 import ccs.rocky.core.Port.Input;
 import ccs.rocky.core.Port.Output;
 import ccs.rocky.core.utils.Ports;
-import ccs.rocky.nodes.Dot;
-import ccs.rocky.nodes.NodesFactory;
 import ccs.rocky.persistent.Loader;
 import ccs.rocky.persistent.Storer;
-import ccs.util.Cloud;
+import ccs.util.Exceptions;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 
 /**
@@ -18,114 +17,8 @@ import java.util.Iterator;
  */
 public class Module implements Iterable<Node> {
 
-    public static abstract class Listener {
-
-        public enum NodeOp {
-
-            ADD, DEL
-        }
-
-        protected void node( Node node, NodeOp op ) {
-        }
-
-        protected void flow( Module module ) {
-        }
-    }
-
-    public static class In extends Dot {
-
-        private static class Descr extends Node.Descriptor<In> {
-
-            @Override
-            public String caption() {
-                return "in";
-            }
-
-            @Override
-            public String tag() {
-                return "in";
-            }
-
-            @Override
-            public In createNode( int id ) {
-                return new In( id, this );
-            }
-
-            @Override
-            public In loadNode( Loader loader ) {
-                return new In( this, loader );
-            }
-        }
-        public static final Descriptor<In> DESCRIPTOR = new Descr();
-
-        public In( int id, Descriptor<?> descriptor ) {
-            super( id, descriptor );
-        }
-
-        public In( Descriptor<?> descriptor, Loader loader ) {
-            super( descriptor, loader );
-        }
-
-        @Override
-        public String caption() {
-            return ">>";
-        }
-
-        @Override
-        public State state() {
-            return State.SIGNAL;
-        }
-    }
-
-    public static class Out extends Dot {
-
-        private static class Descr extends Node.Descriptor<Out> {
-
-            @Override
-            public String caption() {
-                return "out";
-            }
-
-            @Override
-            public String tag() {
-                return "out";
-            }
-
-            @Override
-            public Out createNode( int id ) {
-                return new Out( id, this );
-            }
-
-            @Override
-            public Out loadNode( Loader loader ) {
-                return new Out( this, loader );
-            }
-        }
-        public static final Descriptor<Out> DESCRIPTOR = new Descr();
-
-        public Out( int id, Descriptor<?> descriptor ) {
-            super( id, descriptor );
-        }
-
-        public Out( Descriptor<?> descriptor, Loader loader ) {
-            super( descriptor, loader );
-        }
-
-        @Override
-        public String caption() {
-            return ">>";
-        }
-    }
-    private final Node.Listener nodeListener = new Node.Listener() {
-
-        @Override
-        protected void notifyFlow() {
-            for ( Listener l : listeners )
-                l.flow( Module.this );
-        }
-    };
-    private final Cloud<Listener> listeners = new Cloud<Listener>();
     private final Collection<Node> nodes = new ArrayList<Node>();
+    private final Collection<String> usedIds = new HashSet<String>();
     protected final Ports<Port.Input> inputs = new Ports<Port.Input>();
     protected final Ports<Port.Output> outputs = new Ports<Port.Output>();
     private int idGen;
@@ -133,85 +26,77 @@ public class Module implements Iterable<Node> {
     public Module() {
     }
 
-    private static Port getPort( int id, Iterable<? extends Port> ports ) {
-        for ( Port p : ports )
-            if ( id == p.id() )
-                return p;
-        throw new IllegalArgumentException();
-    }
-
-    private Port getPort( int nid, int pid, boolean isin ) {
+    public Node node( String id ) {
         for ( Node n : nodes )
-            if ( nid == n.id() )
-                return getPort( pid, isin ? n.inputs() : n.outputs() );
-        throw new IllegalArgumentException();
+            if ( id.equals( n.id ) )
+                return n;
+        return null;
     }
 
     public void load( Loader loader ) {
-        //nodes
-        Loader.Attribute anodes = loader.findAttribute( "nodes" );
-        if ( anodes != null )
-            for ( Loader.Attribute a : anodes.asLoader() ) {
+        for ( Loader.Attribute a : loader )
+            if ( "node".equals( a.name ) ) {
                 Loader l = a.asLoader();
-                Node.Descriptor<?> d = NodesFactory.findDescriptor( a.name );
-                Node n = d.loadNode( l );
-                idGen = Math.max( idGen, n.id() + 1 );
-                nodes.add( n );
-//                if ( n instanceof In )
-//                    inputs.add( ((In) n).input() );
-//                else if ( n instanceof Out )
-//                    outputs.add( ((Out) n).output() );
-                n.listen( nodeListener );
-            }
-        //links
-        Loader.Attribute alinks = loader.findAttribute( "links" );
-        if ( alinks != null )
-            for ( Loader.Attribute a : alinks.asLoader() )
-                if ( "link".equals( a.name ) ) {
-                    Loader l = a.asLoader();
-                    int snid = l.findAttribute( "sn" ).asInt();
-                    int spid = l.findAttribute( "sp" ).asInt();
-                    int dnid = l.findAttribute( "dn" ).asInt();
-                    int dpid = l.findAttribute( "dp" ).asInt();
-                    Port.Output from = (Port.Output) getPort( snid, spid, false );
-                    Port.Input to = (Port.Input) getPort( dnid, dpid, true );
-                    to.connect( from );
+                String type = l.findAttribute( "type" ).asString();
+                String id = l.findAttribute( "id" ).asString();
+                Node n;
+                try {
+                    Class<? extends Node> cls = (Class<? extends Node>) Class.forName( type );
+                    n = Node.create( cls, id, l );
+                } catch ( Throwable e ) {
+                    throw Exceptions.wrap( e );
                 }
+                add( n );
+            }
+        for ( Loader.Attribute a : loader )
+            if ( "node".equals( a.name ) ) {
+                Loader n = a.asLoader();
+                String dnid = n.findAttribute( "id" ).asString();
+                for ( Loader.Attribute na : n )
+                    if ( "link".equals( na.name ) ) {
+                        Loader l = na.asLoader();
+                        String dpid = l.findAttribute( "port" ).asString();
+                        String[] did = l.findAttribute( "from" ).asString().split( "\\." );
+                        String snid = did[0];
+                        String spid = did[1];
+                        Node sn = node( snid );
+                        if ( sn == null )
+                            continue;
+                        Port.Output sp = (Port.Output) sn.port( spid );
+                        if ( sp == null )
+                            continue;
+                        Node dn = node( dnid );
+                        if ( dn == null )
+                            continue;
+                        Port.Input dp = (Port.Input) dn.port( dpid );
+                        if ( dp == null )
+                            continue;
+                        dp.connect( sp );
+                    }
+            }
+        Loader.Attribute a = loader.findAttribute( "layout" );
+        if ( a != null ) {
+            Loader l = a.asLoader();
+            
+        }
     }
 
-    public int genId() {
-        return idGen++;
+    public String genId( Class<?> cls ) {
+        String n;
+        do
+            n = String.format( "%s_%x", cls.getSimpleName().toLowerCase(), idGen++ );
+        while ( usedIds.contains( n ) );
+        usedIds.add( n );
+        return n;
     }
 
     public void add( Node node ) {
-        if ( !nodes.add( node ) )
-            return;
-        idGen = Math.max( idGen, node.id() + 1 );
-        for ( Listener l : listeners )
-            l.node( node, Listener.NodeOp.ADD );
-//        if ( node instanceof In )
-//            inputs.add( ((In) node).input() );
-//        else if ( node instanceof Out )
-//            outputs.add( ((Out) node).output() );
-        node.listen( nodeListener );
+        nodes.add( node );
+        usedIds.add( node.id );
     }
 
     public void remove( Node node ) {
-        if ( node.descriptor().system() )
-            return;
-        if ( !nodes.remove( node ) )
-            return;
-//        for ( Port p : Iterabled.multi( node.inputs(), node.outputs() ) )
-//            for ( Node.Listener l : node.listeners )
-//                l.notifyPort( p, Node.Listener.PortOp.DEL );
-        for ( Listener l : listeners )
-            l.node( node, Listener.NodeOp.DEL );
-        node.notifyDelete();
-//        if ( node instanceof In )
-//            inputs.remove( ((In) node).input() );
-//        else if ( node instanceof Out )
-//            outputs.remove( ((Out) node).output() );
-        node.unlisten( nodeListener );
+        nodes.remove( node );
     }
 
     @Override
@@ -227,41 +112,21 @@ public class Module implements Iterable<Node> {
         return outputs;
     }
 
-    public boolean listen( Listener l ) {
-        return listeners.add( l );
-    }
-
     public void store( Storer storer ) {
-        storer.putInt( "version", 0 );
-        //nodes
-        Storer ns = storer.put( "nodes" );
+//        storer.putInt( "version", 1 );
         for ( Node n : nodes ) {
-            Node.Descriptor<?> d = n.descriptor();
-            if ( d.system() )
+            if ( isSystemNode( n ) )
                 continue;
-            Storer s = ns.put( d.tag() );
-            s.putInt( "id", n.id() );
+            Storer s = storer.put( "node" );
+            s.putString( "id", n.id );
+            s.putString( "type", n.getClass().getName() );
             n.store( s );
         }
-        //links
-        Storer ls = storer.put( "links" );
-        for ( Node n : nodes )
-            for ( Input i : n.inputs() ) {
-                Output o = i.connected();
-                if ( o != null ) {
-                    Storer s = ls.put( "link" );
-                    s.putInt( "sn", o.node().id() );
-                    s.putInt( "sp", o.id() );
-                    s.putInt( "dn", i.node().id() );
-                    s.putInt( "dp", i.id() );
-                }
-            }
     }
 
-    public Node findNodeById( int id ) {
-        for ( Node n : nodes )
-            if ( n.id() == id )
-                return n;
-        throw new IllegalArgumentException( "No nodes found" );
+    public static boolean isSystemNode( Node n ) {
+//        Node.Descriptor d = n.getClass().getAnnotation( Node.Descriptor.class );
+//        return d == null ? false : d.system();
+        return false;
     }
 }

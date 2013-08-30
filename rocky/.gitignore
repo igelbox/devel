@@ -1,3 +1,7 @@
-nbproject/private
-nbproject/build-impl.xml
-nbproject/genfiles.properties
+/nbproject/private
+/nbproject/build-impl.xml*
+/nbproject/genfiles.properties
+/lib
+/build
+/dist
+/*.rml

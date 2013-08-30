@@ -1,1 +1,4 @@
-nbproject/private
+/nbproject/private
+/src/ccs_jack_*.h
+/jack.jar
+/build

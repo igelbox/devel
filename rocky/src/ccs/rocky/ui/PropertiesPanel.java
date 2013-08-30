@@ -1,7 +1,7 @@
 package ccs.rocky.ui;
 
 import ccs.rocky.core.Node;
-import ccs.rocky.ui.views.NodeView;
+import ccs.rocky.views.NodeView;
 import ccs.util.Exceptions;
 import java.awt.BorderLayout;
 import java.lang.reflect.Method;
@@ -117,7 +117,7 @@ public class PropertiesPanel extends JPanel {
     public void setObject( Object obj ) {
         Object s;
         if ( obj instanceof NodeView )
-            s = ((NodeView) obj).node();
+            s = ((NodeView) obj).node;
         else
             s = null;
         table.setModel( new Model( s ) );

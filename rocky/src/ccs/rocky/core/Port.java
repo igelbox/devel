@@ -1,104 +1,111 @@
 package ccs.rocky.core;
 
-//import ccs.rocky.core.Node.Listener.PortOp;
-import ccs.util.Cloud;
+import ccs.rocky.views.PortView;
 
 /**
  *
  * @author igel
  */
-public class Port {
+public abstract class Port {
+
+    public static enum State {
+
+        CONST, VAR, SIGNAL
+    }
 
     public static class Output extends Port {
 
-        public Output( int id, Node node ) {
-            super( id, node );
+        public static class FixedState extends Output {
+
+            private final State state;
+
+            public FixedState( String id, Node node, String caption, State state ) {
+                super( id, node, caption );
+                this.state = state;
+            }
+
+            @Override
+            public State state() {
+                return state;
+            }
         }
 
-        protected void connected( Input p, boolean connected ) {
+        public Output( String id, Node node, String caption ) {
+            super( id, node, caption );
+        }
+
+        @Override
+        public State state() {
+            State s = State.CONST;
+            for ( Port.Input i : node.inputs() ) {
+                Port.Output o = i.connected();
+                if ( o == null )
+                    continue;
+                State os = o.state();
+                switch ( os ) {
+                    case VAR:
+                        if ( s == State.CONST )
+                            s = os;
+                        break;
+                    case SIGNAL:
+                        s = os;
+                        break;
+                }
+            }
+            return s;
+        }
+
+        @Override
+        protected View createView() {
+            return new PortView.Output( this );
         }
     }
 
     public static class Input extends Port {
 
-        public static abstract class Listener {
-
-            protected void notifyConnected( Input port, Output to ) {
-            }
-        }
-        private final Node.Listener nl = new Node.Listener() {
-
-            @Override
-            protected void notifyDelete() {
-                connect( null );
-            }
-
-//            @Override
-//            protected void notifyPort( Port port, PortOp op ) {
-//                if ( (port == connected) && (op == PortOp.DEL) )
-//                    connect( null );
-//            }
-            @Override
-            protected void notifyFlow() {
-                node().notifyFlow();
-            }
-        };
-        private final Cloud<Listener> listeners = new Cloud<Listener>();
-
-        public Input( int id, Node node ) {
-            super( id, node );
-        }
         protected Output connected;
+
+        public Input( String id, Node node, String caption ) {
+            super( id, node, caption );
+        }
 
         public Output connected() {
             return connected;
         }
 
         public void connect( Output to ) {
-            if ( connected != null ) {
-                connected.node().unlisten( nl );
-                connected.connected( this, false );
-            }
             connected = to;
-            if ( connected != null ) {
-                connected.node().listen( nl );
-                connected.connected( this, true );
-            }
-            for ( Listener l : listeners )
-                l.notifyConnected( this, to );
-            node().notifyFlow();
         }
 
-        public boolean listen( Listener listener ) {
-            return listeners.add( listener );
+        @Override
+        public State state() {
+            Output p = connected;
+            return p == null ? State.CONST : p.state();
         }
 
-        public boolean unlisten( Listener listener ) {
-            return listeners.remove( listener );
+        @Override
+        protected View createView() {
+            return new PortView.Input( this );
         }
     }
-    private final int id;
-    private final Node node;
+    public final String id, caption;
+    public final Node node;
+    private View _view;
 
-    public Port( int id, Node node ) {
+    public Port( String id, Node node, String caption ) {
         this.id = id;
         this.node = node;
+        this.caption = caption;
     }
 
-    public int id() {
-        return id;
+    protected abstract View createView();
+
+    public final View view() {
+        View r = _view;
+        if ( r == null )
+            _view = r = createView();
+        return r;
     }
 
-    public String idWithNode() {
-        return String.format( "%d.%d", node.id(), id );
-    }
-
-    public Node node() {
-        return node;
-    }
-
-    /** Краткое имя порта */
-    public String caption() {
-        return "";
-    }
+    public abstract State state();
 }

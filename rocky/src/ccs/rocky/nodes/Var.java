@@ -2,7 +2,6 @@ package ccs.rocky.nodes;
 
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
-import ccs.rocky.core.Port.Output;
 import ccs.rocky.persistent.Loader;
 import ccs.rocky.persistent.Storer;
 import ccs.rocky.runtime.Generatable;
@@ -17,30 +16,8 @@ import org.objectweb.asm.Type;
  */
 public class Var extends Node implements Generatable {
 
-    private static class Descr extends Descriptor<Var> {
-
-        @Override
-        public String caption() {
-            return "V";
-        }
-
-        @Override
-        public String tag() {
-            return "var";
-        }
-
-        @Override
-        public Var createNode( int id ) {
-            return new Var( id, this );
-        }
-
-        @Override
-        public Var loadNode( Loader loader ) {
-            return new Var( this, loader );
-        }
-    }
-    public static final Descriptor<Var> DESCRIPTOR = new Descr();
-    private final Port.Output output = new Port.Output( 0, this );
+    private final Port.Output output = new Port.Output.FixedState( "out", this, null, Port.State.VAR );
+    private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
     private final Generatable.Generator gen = new Generator.Fieldable() {
         int id;
 
@@ -53,26 +30,27 @@ public class Var extends Node implements Generatable {
         }
 
         @Override
-        public void gen_inloop( MethodVisitor mv, Output out ) {
+        public void gen_inloop( MethodVisitor mv, Port.Output out ) {
             mv.visitVarInsn( Opcodes.FLOAD, id );
         }
     };
     private float value;
 
-    public Var( int id, Descriptor<?> descriptor ) {
-        super( id, descriptor );
-    }
-
-    public Var( Descriptor<?> descriptor, Loader loader ) {
-        super( descriptor, loader );
+    public Var( String id, Loader loader ) {
+        super( id, loader );
         Loader.Attribute a = loader.findAttribute( "value" );
         if ( a != null )
             this.value = a.asFloat();
     }
 
     @Override
-    public Iterable<Output> outputs() {
-        return new Iterabled.Element<Port.Output>( output );
+    public String caption() {
+        return Float.toString( value );
+    }
+
+    @Override
+    public Iterable<Port.Output> outputs() {
+        return outputs;
     }
 
     @Param
@@ -86,12 +64,9 @@ public class Var extends Node implements Generatable {
 
     @Override
     public void store( Storer storer ) {
-        storer.putFloat( "value", value );
-    }
-
-    @Override
-    public State state() {
-        return State.VAR;
+        super.store( storer );
+        if ( value != 0 )
+            storer.putFloat( "value", value );
     }
 
     @Override

@@ -76,12 +76,12 @@ public class Iterabled {
 
     public static class Array<T> implements Iterable<T> {
 
-        public static class Iteartor<T> implements java.util.Iterator<T> {
+        public static class Iterator<T> implements java.util.Iterator<T> {
 
             private final T[] array;
             private int index;
 
-            public Iteartor( T[] array ) {
+            public Iterator( T[] array ) {
                 this.array = array;
             }
 
@@ -110,7 +110,7 @@ public class Iterabled {
 
         @Override
         public Iterator<T> iterator() {
-            return new Iteartor<T>( array );
+            return new Iterator<T>( array );
         }
     }
 
