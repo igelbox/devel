@@ -4,7 +4,6 @@ import ccs.rocky.core.Port;
 import ccs.rocky.persistent.Loader;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 
 /**
  *
@@ -52,11 +51,6 @@ public class Mod extends AbstractOp {
 
     @Override
     protected void gen_inloop( MethodVisitor mv, Port.Output out ) {
-        mv.visitMethodInsn( Opcodes.INVOKESTATIC, Type.getInternalName( getClass() ), "_op", "(FF)F" );
-    }
-
-    public static float _op( float x, float y ) {
-//        System.out.println( x + ":" + y );
-        return x % y;
+        mv.visitInsn( Opcodes.FREM );
     }
 }

@@ -48,10 +48,6 @@ public class Sig extends AbstractOp {
         inputs.add( input );
     }
 
-    public Port.Input input() {
-        return input;
-    }
-
     @Override
     protected void gen_inloop( MethodVisitor mv, Output out ) {
         mv.visitMethodInsn( Opcodes.INVOKESTATIC, Type.getInternalName( Math.class ), "signum", "(F)F" );

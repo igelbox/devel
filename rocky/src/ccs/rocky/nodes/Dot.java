@@ -70,14 +70,6 @@ public class Dot extends Node implements Generatable {
         return outputs;
     }
 
-    public Port.Input input() {
-        return input;
-    }
-
-    public Port.Output output() {
-        return output;
-    }
-
     @Override
     public Generator generator() {
         return GEN;

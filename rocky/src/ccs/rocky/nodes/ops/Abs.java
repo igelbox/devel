@@ -47,10 +47,6 @@ public class Abs extends AbstractOp {
         inputs.add( input );
     }
 
-    public Port.Input input() {
-        return input;
-    }
-
     @Override
     protected void gen_inloop( MethodVisitor mv, Port.Output out ) {
         mv.visitMethodInsn( Opcodes.INVOKESTATIC, Type.getInternalName( Math.class ), "abs", "(F)F" );

@@ -17,7 +17,7 @@ public abstract class ModulePortView extends NodeView {
 
         public In( Module.In node ) {
             super( node );
-            ports = new Iterabled.Element<PortView<Port.Output>>( new PortView<Port.Output>( node.output(), this ) {
+            ports = new Iterabled.Element<PortView<Port.Output>>( new PortView<Port.Output>( node.outputs().iterator().next(), this ) {
 
                 @Override
                 public int x() {
@@ -48,7 +48,7 @@ public abstract class ModulePortView extends NodeView {
 
         public Out( Module.Out node ) {
             super( node );
-            ports = new Iterabled.Element<PortView<Port.Input>>( new PortView<Port.Input>( node.input(), this ) {
+            ports = new Iterabled.Element<PortView<Port.Input>>( new PortView<Port.Input>( node.inputs().iterator().next(), this ) {
 
                 @Override
                 public int x() {

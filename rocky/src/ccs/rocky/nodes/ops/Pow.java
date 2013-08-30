@@ -16,7 +16,7 @@ public class Pow extends AbstractOp {
 
         @Override
         public String caption() {
-            return "power";
+            return "pow";
         }
 
         @Override
@@ -48,14 +48,6 @@ public class Pow extends AbstractOp {
         super( descriptor, loader, "^" );
         inputs.add( inputX );
         inputs.add( inputY );
-    }
-
-    public Port.Input inputX() {
-        return inputX;
-    }
-
-    public Port.Input inputY() {
-        return inputY;
     }
 
     @Override

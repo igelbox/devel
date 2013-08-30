@@ -37,9 +37,9 @@ public class DotNodeView extends NodeView {
 
     public DotNodeView( Dot node ) {
         super( node );
-        input = new PV<Port.Input>( node.input(), this );
+        input = new PV<Port.Input>( node.inputs().iterator().next(), this );
         inputs = new Iterabled.Element<PortView<Port.Input>>( input );
-        output = new PV<Port.Output>( node.output(), this );
+        output = new PV<Port.Output>( node.outputs().iterator().next(), this );
         outputs = new Iterabled.Element<PortView<Port.Output>>( output );
     }
 

@@ -50,14 +50,6 @@ public class Sum extends AbstractOp {
         inputs.add( inputY );
     }
 
-    public Port.Input inputX() {
-        return inputX;
-    }
-
-    public Port.Input inputY() {
-        return inputY;
-    }
-
     @Override
     protected void gen_inloop( MethodVisitor mv, Output out ) {
         mv.visitInsn( Opcodes.FADD );

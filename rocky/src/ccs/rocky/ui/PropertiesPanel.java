@@ -75,7 +75,12 @@ public class PropertiesPanel extends JPanel {
                     return p.name;
                 case 1:
                     try {
-                        return p.get.invoke( p.obj );
+                        Float v = (Float) p.get.invoke( p.obj );
+                        if ( v == (float) Math.E )
+                            return "e";
+                        if ( v == (float) Math.PI )
+                            return "pi";
+                        return v;
                     } catch ( Throwable t ) {
                         throw Exceptions.wrap( t );
                     }
@@ -87,8 +92,16 @@ public class PropertiesPanel extends JPanel {
         public void setValueAt( Object aValue, int rowIndex, int columnIndex ) {
             Prop p = props.get( rowIndex );
             try {
-                if ( p.get.getReturnType() == float.class )
-                    p.set.invoke( p.obj, Float.parseFloat( aValue.toString() ) );
+                if ( p.get.getReturnType() == float.class ) {
+                    float v;
+                    if ( "e".equals( aValue ) )
+                        v = (float) Math.E;
+                    else if ( "pi".equals( aValue ) )
+                        v = (float) Math.PI;
+                    else
+                        v = Float.valueOf( aValue.toString() );
+                    p.set.invoke( p.obj, v );
+                }
             } catch ( Throwable t ) {
                 throw Exceptions.wrap( t );
             }

@@ -49,14 +49,6 @@ public class Div extends AbstractOp {
         inputs.add( inputY );
     }
 
-    public Port.Input inputX() {
-        return inputX;
-    }
-
-    public Port.Input inputY() {
-        return inputY;
-    }
-
     @Override
     protected void gen_inloop( MethodVisitor mv, Port.Output out ) {
         mv.visitInsn( Opcodes.FDIV );

@@ -157,10 +157,10 @@ public class Module implements Iterable<Node> {
                 Node n = d.loadNode( l );
                 idGen = Math.max( idGen, n.id() + 1 );
                 nodes.add( n );
-                if ( n instanceof In )
-                    inputs.add( ((In) n).input() );
-                else if ( n instanceof Out )
-                    outputs.add( ((Out) n).output() );
+//                if ( n instanceof In )
+//                    inputs.add( ((In) n).input() );
+//                else if ( n instanceof Out )
+//                    outputs.add( ((Out) n).output() );
                 n.listen( nodeListener );
             }
         //links
@@ -189,10 +189,10 @@ public class Module implements Iterable<Node> {
         idGen = Math.max( idGen, node.id() + 1 );
         for ( Listener l : listeners )
             l.node( node, Listener.NodeOp.ADD );
-        if ( node instanceof In )
-            inputs.add( ((In) node).input() );
-        else if ( node instanceof Out )
-            outputs.add( ((Out) node).output() );
+//        if ( node instanceof In )
+//            inputs.add( ((In) node).input() );
+//        else if ( node instanceof Out )
+//            outputs.add( ((Out) node).output() );
         node.listen( nodeListener );
     }
 
@@ -207,10 +207,10 @@ public class Module implements Iterable<Node> {
         for ( Listener l : listeners )
             l.node( node, Listener.NodeOp.DEL );
         node.notifyDelete();
-        if ( node instanceof In )
-            inputs.remove( ((In) node).input() );
-        else if ( node instanceof Out )
-            outputs.remove( ((Out) node).output() );
+//        if ( node instanceof In )
+//            inputs.remove( ((In) node).input() );
+//        else if ( node instanceof Out )
+//            outputs.remove( ((Out) node).output() );
         node.unlisten( nodeListener );
     }
 

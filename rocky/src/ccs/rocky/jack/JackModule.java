@@ -1,7 +1,6 @@
 package ccs.rocky.jack;
 
 import ccs.jack.Client;
-import ccs.jack.Jack;
 import ccs.rocky.core.Module;
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
@@ -337,21 +336,18 @@ public class JackModule extends Module {
         }
     }
     private final Client client = new Client( "Rocky" ) {
-        private final Compilator compilator = new Compilator();
         private final Module.Listener ml = new Module.Listener() {
             @Override
             protected void flow( Module module ) {
-                Class<? extends RtModule> cls = compilator.compile( module, client.bufferSize(), client.sampleRate() );
+                if ( loading )
+                    return;
                 try {
-                    rt = cls.getDeclaredConstructor( Module.class ).newInstance( module );
-                    System.out.println( rt );
+                    recompile();
                 } catch ( Throwable e ) {
                     throw Exceptions.wrap( e );
                 }
             }
         };
-        private final long st = Jack.getTime();
-        private RtModule rt;
         private long lastProcess;
         private float time;
 
@@ -363,10 +359,9 @@ public class JackModule extends Module {
         protected int process( int samples ) {
             try {
                 long t = System.currentTimeMillis();
-                if ( rt == null )
+                if ( runtime == null )
                     return 0;
-//                rt.process( (float) (Jack.getTime() - st) / 1E6f );
-                rt.process( time );
+                runtime.process( time );
                 time += samples / (float) client.sampleRate();
                 for ( Port.Input i : playback.inputs() ) {
                     Playback.SinkPort s = (Playback.SinkPort) i;
@@ -392,7 +387,10 @@ public class JackModule extends Module {
     private final Capture capture;
     private final Playback playback;
     private final Timer timer = Timer.DESCRIPTOR.createNode( -4 );
+    private final Compilator compilator = new Compilator();
+    private RtModule runtime;
     public final Oscilloscope oscilloscope;
+    private boolean loading;
     private float load;
 
     public JackModule() {
@@ -426,6 +424,27 @@ public class JackModule extends Module {
         this.capture = cpt;
         this.playback = plb;
         client.activate();
+    }
+
+    private void recompile() throws Throwable {
+        Class<? extends RtModule> cls = compilator.compile( this, client.bufferSize(), client.sampleRate() );
+        runtime = cls.getDeclaredConstructor( Module.class ).newInstance( this );
+        System.out.println( runtime );
+    }
+
+    @Override
+    public void load( Loader loader ) {
+        loading = true;
+        try {
+            super.load( loader );
+            try {
+                recompile();
+            } catch ( Throwable t ) {
+                throw new RuntimeException( t );
+            }
+        } finally {
+            loading = false;
+        }
     }
 
     public void listen( ProcessListener l ) {

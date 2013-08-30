@@ -46,6 +46,7 @@ public class Var extends Node implements Generatable {
 
         @Override
         public void gen_prolog( MethodVisitor mv, Locals locals, int samples, int samplerate ) {
+            pushNode( mv, locals, Var.this );
             id = locals.newVar();
             mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, Type.getInternalName( Var.class ), "value", "()F" );
             mv.visitVarInsn( Opcodes.FSTORE, id );
@@ -67,10 +68,6 @@ public class Var extends Node implements Generatable {
         Loader.Attribute a = loader.findAttribute( "value" );
         if ( a != null )
             this.value = a.asFloat();
-    }
-
-    public Port.Output output() {
-        return output;
     }
 
     @Override

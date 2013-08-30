@@ -58,10 +58,6 @@ public class Const extends Node implements Generatable {
             this.value = a.asFloat();
     }
 
-    public Port.Output output() {
-        return output;
-    }
-
     @Override
     public Iterable<Output> outputs() {
         return new Iterabled.Element<Port.Output>( output );
