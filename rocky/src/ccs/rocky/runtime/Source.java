@@ -6,5 +6,5 @@ package ccs.rocky.runtime;
  */
 public interface Source {
 
-    float[] get( int samples, int samplerate, float time );
+    float[] get( float time );
 }

@@ -14,5 +14,5 @@ public abstract class RtModule {
         this.module = module;
     }
 
-    public abstract void process( int samples, int samplerate, float time );
+    public abstract void process( float time );
 }

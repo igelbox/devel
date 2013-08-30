@@ -5,13 +5,9 @@ import ccs.rocky.core.Node;
 import ccs.rocky.jack.JackModule;
 import ccs.rocky.nodes.NodesFactory;
 import ccs.rocky.persistent.ZipStorage;
-import ccs.rocky.runtime.Compilator;
-import ccs.rocky.runtime.RtModule;
 import ccs.rocky.runtime.Sink;
-import ccs.rocky.runtime.Source;
 import ccs.rocky.ui.views.View;
 import ccs.util.Exceptions;
-import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -41,21 +37,23 @@ public class MainForm extends JFrame {
             m.add( n );
         }
     }
-    private final Oscilloscope oscilloscope = new Oscilloscope();
-    private final JLabel load = new JLabel();
+//    private final Oscilloscope oscilloscope = new Oscilloscope();
+    private final Oscilloscope1 oscilloscope = new Oscilloscope1();
+    private final ControlPanel cp = new ControlPanel();
     private final JackModule.ProcessListener mpl = new JackModule.ProcessListener() {
 
         private long last;
 
         @Override
         protected void processed( JackModule module ) {
+            Sink snk = module.oscilloscope.sink();
+            oscilloscope.setBuffer( snk.buffer() );
             long t = System.currentTimeMillis();
             if ( (t - last) < 1000 / 50 )
                 return;
-            Sink snk = module.oscilloscope.sink();
-            oscilloscope.setBuffer( snk.buffer() );
             oscilloscope.repaint();
-            load.setText( String.format( "load: %.2f%%", module.load() ) );
+            cp.load( module.load() );
+            cp.repaint();
             last = t;
         }
     };
@@ -116,27 +114,10 @@ public class MainForm extends JFrame {
                 } );
             }
             menu.add( del );
+            menu.add( cp );
         }
         setJMenuBar( menu );
-        JToolBar tool = new JToolBar( "Run" );
-        {
-            final JToggleButton run = new JToggleButton();
-            run.setAction( new AbstractAction( "Run" ) {
-
-                @Override
-                public void actionPerformed( ActionEvent e ) {
-                    JackModule m = (JackModule) mp.module();
-                    m.activate( run.isSelected() );
-                    run.setSelected( m.active() );
-                    run.setText( run.isSelected() ? "Stop" : "Run" );
-                    load.setVisible( m.active() );
-                }
-            } );
-//            tool.add( run );
-            tool.add( load );
-        }
-        add( tool, BorderLayout.NORTH );
-        oscilloscope.setPreferredSize( new Dimension( 1000, 256 ) );
+        oscilloscope.setPreferredSize( new Dimension( mp.getPreferredSize().width, 256 ) );
         JSplitPane sp = new JSplitPane( JSplitPane.VERTICAL_SPLIT, true, oscilloscope, mp );
         sp.setPreferredSize( new Dimension( 800, 256 ) );
         add( new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, true, sp, props ) );

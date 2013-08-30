@@ -1,11 +1,9 @@
 package ccs.rocky.nodes.gen;
 
-import ccs.rocky.nodes.*;
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
 import ccs.rocky.core.Port.Output;
 import ccs.rocky.persistent.Loader;
-import ccs.rocky.persistent.Storer;
 import ccs.rocky.runtime.Source;
 import ccs.util.Iterabled;
 
@@ -45,13 +43,16 @@ public class Sine extends Node {
         public P( Node node ) {
             super( 0, node );
         }
+        private float t;
 
         @Override
-        public float[] get( int samples, int samplerate, float time ) {
-            if ( samples > buffer.length )
-                buffer = new float[samples];
-            for ( int i = 0; i < samples; i++ )
-                buffer[i] = (float) Math.sin( 10.0 * (time + (double) i / (double) samplerate) * Math.PI * 2.0 );
+        public float[] get( float time ) {
+//            if ( samples > buffer.length )
+//                buffer = new float[samples];
+//            for ( int i = 0; i < samples; i++ )
+////                buffer[i] = (float) Math.sin( 200.0 * (time + (double) i / (double) samplerate) * Math.PI * 2.0 );
+//                buffer[i] = (float) Math.sin( 2*time + 10 * ((double) i / (double) samples) * Math.PI * 2.0 );
+//            t += samples / 100f;
             return buffer;
         }
     }

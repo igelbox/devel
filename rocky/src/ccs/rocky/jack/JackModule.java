@@ -61,7 +61,7 @@ public class JackModule extends Module {
 
             private final ccs.jack.Port sPort;
             private final Client client;
-            public float[] buffer = new float[0];
+            public float[] buffer;
             private int ccount;
             private ccs.jack.Port port;
 
@@ -69,6 +69,7 @@ public class JackModule extends Module {
                 super( id, node );
                 this.sPort = sPort;
                 this.client = client;
+                this.buffer = new float[client.bufferSize()];
             }
 
             @Override
@@ -90,11 +91,9 @@ public class JackModule extends Module {
             }
 
             @Override
-            public float[] get( int samples, int samplerate, float time ) {
-                if ( samples > buffer.length )
-                    buffer = new float[samples];
+            public float[] get( float time ) {
                 if ( port != null )
-                    port.get( buffer, samples );
+                    port.get( buffer, buffer.length );
                 return buffer;
             }
         }
@@ -263,7 +262,7 @@ public class JackModule extends Module {
 
             @Override
             protected void flow( Module module ) {
-                Class<? extends RtModule> cls = compilator.compile( module );
+                Class<? extends RtModule> cls = compilator.compile( module, client.bufferSize(), client.sampleRate() );
                 try {
                     rt = cls.getDeclaredConstructor( Module.class ).newInstance( module );
                     System.out.println( rt );
@@ -286,7 +285,7 @@ public class JackModule extends Module {
                 long t = System.currentTimeMillis();
                 if ( rt == null )
                     return 0;
-                rt.process( samples, sampleRate(), (float) (Jack.getTime() - st) / 1E6f );
+                rt.process( (float) (Jack.getTime() - st) / 1E6f );
                 for ( Port.Input i : playback.inputs() ) {
                     Playback.SinkPort s = (Playback.SinkPort) i;
                     if ( s.port != null )

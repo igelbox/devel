@@ -38,7 +38,7 @@ public abstract class PortView<T extends Port> extends View implements View.Drag
 
     @Override
     public int ry() {
-        return 2;
+        return 3;
     }
 
     @Override
