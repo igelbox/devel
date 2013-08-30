@@ -2,14 +2,17 @@ package ccs.rocky.nodes;
 
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
+import ccs.rocky.core.Port.Output;
 import ccs.rocky.persistent.Loader;
+import ccs.rocky.runtime.Generatable;
 import ccs.util.Iterabled;
+import org.objectweb.asm.MethodVisitor;
 
 /**
  *
  * @author igel
  */
-public class Dot extends Node {
+public class Dot extends Node implements Generatable {
 
     private static class Descr extends Descriptor<Dot> {
 
@@ -34,6 +37,11 @@ public class Dot extends Node {
         }
     }
     public static final Descriptor<Dot> DESCRIPTOR = new Descr();
+    private static final Generator GEN = new Generator() {
+        @Override
+        public void gen_inloop( MethodVisitor mv, Output out ) {
+        }
+    };
     private final Port.Output output = new Port.Output( 0, this );
     private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
     private final Port.Input input = new Port.Input( 0, this );
@@ -68,5 +76,10 @@ public class Dot extends Node {
 
     public Port.Output output() {
         return output;
+    }
+
+    @Override
+    public Generator generator() {
+        return GEN;
     }
 }

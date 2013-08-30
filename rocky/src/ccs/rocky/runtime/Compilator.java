@@ -4,9 +4,9 @@ import ccs.rocky.core.Module;
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
 import ccs.rocky.nodes.Buff;
-import ccs.rocky.nodes.Var;
 import ccs.util.Exceptions;
 import ccs.util.Iterabled;
+import com.sun.xml.internal.ws.org.objectweb.asm.Type;
 import java.io.FileOutputStream;
 import java.util.*;
 import org.objectweb.asm.ClassWriter;
@@ -20,7 +20,6 @@ import org.objectweb.asm.Opcodes;
  */
 public class Compilator extends ClassLoader {
 
-    private static final int LV_INDEX = 2;
     private int idGen;
 
     public Class<? extends RtModule> compile( Module module, int samples, int samplerate ) {
@@ -28,7 +27,6 @@ public class Compilator extends ClassLoader {
         String name = String.format( "ccs.rocky.runtime.RtModule_%08X", idGen++ ), xname = name.replaceAll( "\\.", "/" );
         ClassWriter cw = new ClassWriter( ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS );
         cw.visit( Opcodes.V1_6, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, xname, null, pname, null );
-        final String c_n_v = "ccs/rocky/nodes/Var";
         final String c_src = "ccs/rocky/runtime/Source";
         final String c_snk = "ccs/rocky/runtime/Sink";
         final String c_buf = "ccs/rocky/runtime/Buffer";
@@ -42,18 +40,19 @@ public class Compilator extends ClassLoader {
         final Set<Object> used = new HashSet<Object>();
         for ( Port.Input i : sinks )
             used( used, i );
-        Collection<Var> vars = new ArrayList<Var>();
         Collection<Buff> bufs = new ArrayList<Buff>();
+        Collection<Node> fns = new ArrayList<Node>();
         Collection<Port.Output> sources = new ArrayList<Port.Output>();
         for ( Node n : module ) {
             if ( used.contains( n ) )
-                if ( n instanceof Var ) {
-                    vars.add( (Var) n );
-                    cw.visitField( Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, fieldVar( n ), 'L' + c_n_v + ';', null, null ).visitEnd();
-                } else if ( n instanceof Buff ) {
+                if ( n instanceof Buff ) {
                     bufs.add( (Buff) n );
                     cw.visitField( Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, fieldBuff( n ), 'L' + c_buf + ';', null, null ).visitEnd();
-                }
+                } else if ( n instanceof Generatable )
+                    if ( ((Generatable) n).generator() instanceof Generatable.Generator.Fieldable ) {
+                        fns.add( n );
+                        cw.visitField( Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, fieldFN( n ), Type.getDescriptor( n.getClass() ), null, null ).visitEnd();
+                    }
             for ( Port.Output p : n.outputs() )
                 if ( (p instanceof Source) && used.contains( p ) ) {
                     sources.add( p );
@@ -69,15 +68,15 @@ public class Compilator extends ClassLoader {
             mv.visitVarInsn( Opcodes.ALOAD, 0 );
             mv.visitVarInsn( Opcodes.ALOAD, 1 );
             mv.visitMethodInsn( Opcodes.INVOKESPECIAL, pname, "<init>", "(L" + c_m + ";)V" );
-            for ( Var v : vars ) {
+            for ( Node n : fns ) {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 {
                     mv.visitVarInsn( Opcodes.ALOAD, 1 );
-                    mv.visitLdcInsn( v.id() );
+                    mv.visitLdcInsn( n.id() );
                     mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_m, "findNodeById", "(I)L" + c_n + ";" );
                 }
-                mv.visitTypeInsn( Opcodes.CHECKCAST, c_n_v );
-                mv.visitFieldInsn( Opcodes.PUTFIELD, xname, fieldVar( v ), "L" + c_n_v + ";" );
+                mv.visitTypeInsn( Opcodes.CHECKCAST, Type.getInternalName( n.getClass() ) );
+                mv.visitFieldInsn( Opcodes.PUTFIELD, xname, fieldFN( n ), Type.getDescriptor( n.getClass() ) );
             }
             for ( Buff b : bufs ) {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
@@ -118,43 +117,62 @@ public class Compilator extends ClassLoader {
         {
             Label loop = new Label();
             MethodVisitor mv = cw.visitMethod( Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, "process", "(F)V", null, null );
+            Generatable.Locals locals = new Generatable.Locals() {
+                int gen = 3;
+
+                @Override
+                public int sampleVar() {
+                    return 2;
+                }
+
+                @Override
+                public int timeVar() {
+                    return 1;
+                }
+
+                @Override
+                public int newVar() {
+                    return gen++;
+                }
+            };
             mv.visitCode();
             mv.visitIntInsn( Opcodes.SIPUSH, samples - 1 );
-            mv.visitVarInsn( Opcodes.ISTORE, LV_INDEX );
-            int lvidGen = LV_INDEX + 1;
+            mv.visitVarInsn( Opcodes.ISTORE, locals.sampleVar() );
+            for ( Node n : module )
+                if ( used.contains( n ) )
+                    if ( n instanceof Generatable ) {
+                        Generatable.Generator g = ((Generatable) n).generator();
+                        if ( g instanceof Generatable.Generator.Fieldable ) {
+                            mv.visitVarInsn( Opcodes.ALOAD, 0 );
+                            mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldFN( n ), Type.getDescriptor( n.getClass() ) );
+                        }
+                        g.gen_prolog( mv, locals, samples, samplerate );
+                    }
             Map<Object, Integer> imap = new HashMap<Object, Integer>();
-            for ( Var v : vars ) {
-                int id = lvidGen++;
-                mv.visitVarInsn( Opcodes.ALOAD, 0 );
-                mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldVar( v ), 'L' + c_n_v + ';' );
-                mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_n_v, "value", "()F" );
-                mv.visitVarInsn( Opcodes.FSTORE, id );
-                imap.put( v, id );
-            }
             for ( Buff b : bufs ) {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldBuff( b ), 'L' + c_buf + ';' );
                 if ( used.contains( b.max() ) ) {
                     mv.visitInsn( Opcodes.DUP );
                     mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_buf, "max", "()F" );
-                    int id = lvidGen++;
+                    int id = locals.newVar();
                     mv.visitVarInsn( Opcodes.FSTORE, id );
                     imap.put( b.max(), id );
                 }
                 if ( used.contains( b.min() ) ) {
                     mv.visitInsn( Opcodes.DUP );
                     mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_buf, "min", "()F" );
-                    int id = lvidGen++;
+                    int id = locals.newVar();
                     mv.visitVarInsn( Opcodes.FSTORE, id );
                     imap.put( b.min(), id );
                 }
                 mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, c_buf, "buffer", "()[F" );
-                int id = lvidGen++;
+                int id = locals.newVar();
                 mv.visitVarInsn( Opcodes.ASTORE, id );
                 imap.put( b.input(), id );
             }
             for ( Port.Output p : sources ) {
-                int id = lvidGen++;
+                int id = locals.newVar();
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldSS( "src", p ), "L" + c_src + ";" );
                 mv.visitVarInsn( Opcodes.FLOAD, 1 );
@@ -163,7 +181,7 @@ public class Compilator extends ClassLoader {
                 imap.put( p, id );
             }
             for ( Port.Input p : sinks ) {
-                int id = lvidGen++;
+                int id = locals.newVar();
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
                 mv.visitFieldInsn( Opcodes.GETFIELD, xname, fieldSS( "snk", p ), "L" + c_snk + ";" );
                 mv.visitMethodInsn( Opcodes.INVOKEINTERFACE, c_snk, "buffer", "()[F" );
@@ -184,7 +202,7 @@ public class Compilator extends ClassLoader {
                     }
                 for ( Map.Entry<Port.Output, Integer> e : ocnt.entrySet() )
                     if ( e.getValue() > 1 ) {
-                        int id = lvidGen++;
+                        int id = locals.newVar();
                         omap.put( e.getKey(), id );
                     }
             }
@@ -193,19 +211,19 @@ public class Compilator extends ClassLoader {
             for ( Buff b : bufs ) {
                 Port.Input i = b.input();
                 mv.visitVarInsn( Opcodes.ALOAD, imap.get( i ) );
-                mv.visitVarInsn( Opcodes.ILOAD, LV_INDEX );
-                gen( mv, i, imap, omap );
+                mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
+                gen( mv, i, imap, omap, locals );
                 mv.visitInsn( Opcodes.FASTORE );
             }
             for ( Port.Input i : sinks ) {
                 mv.visitVarInsn( Opcodes.ALOAD, imap.get( i ) );
-                mv.visitVarInsn( Opcodes.ILOAD, LV_INDEX );
-                gen( mv, i, imap, omap );
+                mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
+                gen( mv, i, imap, omap, locals );
                 mv.visitInsn( Opcodes.FASTORE );
             }
             //end
-            mv.visitIincInsn( LV_INDEX, -1 );
-            mv.visitVarInsn( Opcodes.ILOAD, LV_INDEX );
+            mv.visitIincInsn( locals.sampleVar(), -1 );
+            mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
             mv.visitJumpInsn( Opcodes.IFGE, loop );
             for ( Buff b : bufs ) {
                 mv.visitVarInsn( Opcodes.ALOAD, 0 );
@@ -221,7 +239,7 @@ public class Compilator extends ClassLoader {
         return (Class<? extends RtModule>) defineClass( name, data, 0, data.length );
     }
 
-    private void gen( MethodVisitor mv, Port.Input i, Map<Object, Integer> imap, Map<Port.Output, Integer> omap ) {
+    private void gen( MethodVisitor mv, Port.Input i, Map<Object, Integer> imap, Map<Port.Output, Integer> omap, Generatable.Locals locals ) {
         Port.Output o = i.connected();
         if ( o == null ) {
             mv.visitLdcInsn( 0.0f );
@@ -235,40 +253,16 @@ public class Compilator extends ClassLoader {
                     mv.visitVarInsn( Opcodes.FLOAD, lvi );
                 else {
                     mv.visitVarInsn( Opcodes.ALOAD, lvi );
-                    mv.visitVarInsn( Opcodes.ILOAD, LV_INDEX );
+                    mv.visitVarInsn( Opcodes.ILOAD, locals.sampleVar() );
                     mv.visitInsn( Opcodes.FALOAD );
                 }
             else {
                 Node node = o.node();
                 for ( Port.Input p : node.inputs() )
-                    gen( mv, p, imap, omap );
-                if ( node instanceof ccs.rocky.nodes.Const )
-                    mv.visitLdcInsn( ((ccs.rocky.nodes.Const) node).value() );
-                else if ( node instanceof ccs.rocky.nodes.Var )
-                    mv.visitVarInsn( Opcodes.FLOAD, imap.get( node ) );
-                else if ( node instanceof ccs.rocky.nodes.ops.Sum )
-                    mv.visitInsn( Opcodes.FADD );
-                else if ( node instanceof ccs.rocky.nodes.ops.Sub )
-                    mv.visitInsn( Opcodes.FSUB );
-                else if ( node instanceof ccs.rocky.nodes.ops.Mul )
-                    mv.visitInsn( Opcodes.FMUL );
-                else if ( node instanceof ccs.rocky.nodes.ops.Div )
-                    mv.visitInsn( Opcodes.FDIV );
-                else if ( node instanceof ccs.rocky.nodes.ops.Sig )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "java/lang/Math", "signum", "(F)F" );
-                else if ( node instanceof ccs.rocky.nodes.ops.Abs )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "java/lang/Math", "abs", "(F)F" );
-                else if ( node instanceof ccs.rocky.nodes.ops.Pow )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "ccs/rocky/runtime/FMath", "pow", "(FF)F" );
-                else if ( node instanceof ccs.rocky.nodes.ops.Log )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "ccs/rocky/runtime/FMath", "log", "(F)F" );
-                else if ( node instanceof ccs.rocky.nodes.ops.Exp )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "ccs/rocky/runtime/FMath", "exp", "(F)F" );
-                else if ( node instanceof ccs.rocky.nodes.ops.Inv )
-                    mv.visitMethodInsn( Opcodes.INVOKESTATIC, "ccs/rocky/runtime/FMath", "inv", "(F)F" );
-                else if ( node instanceof ccs.rocky.nodes.Buff ) {
-                } else if ( node instanceof ccs.rocky.nodes.Dot ) {
-                } else
+                    gen( mv, p, imap, omap, locals );
+                if ( node instanceof Generatable )
+                    ((Generatable) node).generator().gen_inloop( mv, o );
+                else
                     throw new UnsupportedOperationException( node.getClass().getName() );
             }
             if ( lvo != null ) {
@@ -303,6 +297,10 @@ public class Compilator extends ClassLoader {
 
     private static String fieldSS( String pfx, Port p ) {
         return String.format( "%s%08X_%02X", pfx, p.node().id(), p.id() );
+    }
+
+    private static String fieldFN( Node n ) {
+        return String.format( "node%08X", n.id() );
     }
 
     private static void used( Set<Object> s, Port.Input i ) {

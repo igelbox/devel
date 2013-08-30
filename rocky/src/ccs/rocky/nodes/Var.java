@@ -5,13 +5,17 @@ import ccs.rocky.core.Port;
 import ccs.rocky.core.Port.Output;
 import ccs.rocky.persistent.Loader;
 import ccs.rocky.persistent.Storer;
+import ccs.rocky.runtime.Generatable;
 import ccs.util.Iterabled;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 /**
  *
  * @author igel
  */
-public class Var extends Node {
+public class Var extends Node implements Generatable {
 
     private static class Descr extends Descriptor<Var> {
 
@@ -37,6 +41,21 @@ public class Var extends Node {
     }
     public static final Descriptor<Var> DESCRIPTOR = new Descr();
     private final Port.Output output = new Port.Output( 0, this );
+    private final Generatable.Generator gen = new Generator.Fieldable() {
+        int id;
+
+        @Override
+        public void gen_prolog( MethodVisitor mv, Locals locals, int samples, int samplerate ) {
+            id = locals.newVar();
+            mv.visitMethodInsn( Opcodes.INVOKEVIRTUAL, Type.getInternalName( Var.class ), "value", "()F" );
+            mv.visitVarInsn( Opcodes.FSTORE, id );
+        }
+
+        @Override
+        public void gen_inloop( MethodVisitor mv, Output out ) {
+            mv.visitVarInsn( Opcodes.FLOAD, id );
+        }
+    };
     private float value;
 
     public Var( int id, Descriptor<?> descriptor ) {
@@ -76,5 +95,10 @@ public class Var extends Node {
     @Override
     public State state() {
         return State.VAR;
+    }
+
+    @Override
+    public Generator generator() {
+        return gen;
     }
 }

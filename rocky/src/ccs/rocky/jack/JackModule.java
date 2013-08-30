@@ -5,15 +5,16 @@ import ccs.jack.Jack;
 import ccs.rocky.core.Module;
 import ccs.rocky.core.Node;
 import ccs.rocky.core.Port;
+import ccs.rocky.core.Port.Output;
 import ccs.rocky.core.utils.Ports;
 import ccs.rocky.persistent.Loader;
-import ccs.rocky.runtime.Compilator;
-import ccs.rocky.runtime.RtModule;
-import ccs.rocky.runtime.Sink;
-import ccs.rocky.runtime.Source;
+import ccs.rocky.runtime.*;
 import ccs.util.Cloud;
 import ccs.util.Exceptions;
 import ccs.util.Iterabled;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 /**
  *
@@ -112,6 +113,86 @@ public class JackModule extends Module {
         @Override
         public State state() {
             return State.SIGNAL;
+        }
+    }
+
+    public static class Timer extends Node implements Generatable {
+
+        private static class Descr extends Descriptor<Timer> {
+
+            @Override
+            public String caption() {
+                return "T";
+            }
+
+            @Override
+            public String tag() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Timer createNode( int id ) {
+                return new Timer( id, this );
+            }
+
+            @Override
+            public Timer loadNode( Loader loader ) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean system() {
+                return true;
+            }
+        }
+        public static final Descriptor<Timer> DESCRIPTOR = new Descr();
+        private final Port.Output output = new Port.Output( 0, this );
+        private final Iterable<Port.Output> outputs = new Iterabled.Element<Port.Output>( output );
+        private final Generatable.Generator gen = new Generatable.Generator() {
+            int s, t, sr;
+
+            @Override
+            public void gen_prolog( MethodVisitor mv, Locals locals, int samples, int samplerate ) {
+                s = locals.sampleVar();
+                t = locals.timeVar();
+                sr = samplerate;
+            }
+
+            @Override
+            public void gen_inloop( MethodVisitor mv, Output out ) {
+                mv.visitVarInsn( Opcodes.FLOAD, t );
+                mv.visitLdcInsn( sr );
+                mv.visitVarInsn( Opcodes.ILOAD, s );
+                mv.visitMethodInsn( Opcodes.INVOKESTATIC, Type.getInternalName( Timer.class ), "_op", "(FII)F" );
+            }
+        };
+
+        public Timer( int id, Descriptor<?> descriptor ) {
+            super( id, descriptor );
+        }
+
+        @Override
+        public Iterable<Port.Output> outputs() {
+            return outputs;
+        }
+
+        @Override
+        public State state() {
+            return State.SIGNAL;
+        }
+
+        @Override
+        public Generator generator() {
+            return gen;
+        }
+
+        public static float _op( int i ) {
+            System.out.println( i );
+            return 0;
+        }
+
+        public static float _op( float time, int samplerate, int sample ) {
+            return time + (float) sample / (float) samplerate;
         }
     }
 
@@ -256,10 +337,8 @@ public class JackModule extends Module {
         }
     }
     private final Client client = new Client( "Rocky" ) {
-
         private final Compilator compilator = new Compilator();
         private final Module.Listener ml = new Module.Listener() {
-
             @Override
             protected void flow( Module module ) {
                 Class<? extends RtModule> cls = compilator.compile( module, client.bufferSize(), client.sampleRate() );
@@ -274,6 +353,7 @@ public class JackModule extends Module {
         private final long st = Jack.getTime();
         private RtModule rt;
         private long lastProcess;
+        private float time;
 
         {
             JackModule.this.listen( ml );
@@ -285,7 +365,9 @@ public class JackModule extends Module {
                 long t = System.currentTimeMillis();
                 if ( rt == null )
                     return 0;
-                rt.process( (float) (Jack.getTime() - st) / 1E6f );
+//                rt.process( (float) (Jack.getTime() - st) / 1E6f );
+                rt.process( time );
+                time += samples / (float) client.sampleRate();
                 for ( Port.Input i : playback.inputs() ) {
                     Playback.SinkPort s = (Playback.SinkPort) i;
                     if ( s.port != null )
@@ -309,12 +391,14 @@ public class JackModule extends Module {
     private final Cloud<ProcessListener> listeners = new Cloud<ProcessListener>();
     private final Capture capture;
     private final Playback playback;
+    private final Timer timer = Timer.DESCRIPTOR.createNode( -4 );
     public final Oscilloscope oscilloscope;
     private float load;
 
     public JackModule() {
         oscilloscope = new Oscilloscope( client );
         add( oscilloscope );
+        add( timer );
         Capture cpt = null;
         Playback plb = null;
         for ( ccs.jack.Port p : client.findAllPorts() ) {

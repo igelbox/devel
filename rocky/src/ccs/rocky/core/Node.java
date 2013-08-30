@@ -149,4 +149,9 @@ public abstract class Node {
         for ( Listener l : listeners )
             l.notifyDelete();
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + '#' + id;
+    }
 }

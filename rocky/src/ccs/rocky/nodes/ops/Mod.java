@@ -10,52 +10,44 @@ import org.objectweb.asm.Type;
  *
  * @author igel
  */
-public class Pow extends AbstractOp {
+public class Mod extends AbstractOp {
 
-    private static class Descr extends Descriptor<Pow> {
+    private static class Descr extends Descriptor<Mod> {
 
         @Override
         public String caption() {
-            return "power";
+            return "mod";
         }
 
         @Override
         public String tag() {
-            return "pow";
+            return "mod";
         }
 
         @Override
-        public Pow createNode( int id ) {
-            return new Pow( id, this );
+        public Mod createNode( int id ) {
+            return new Mod( id, this );
         }
 
         @Override
-        public Pow loadNode( Loader loader ) {
-            return new Pow( this, loader );
+        public Mod loadNode( Loader loader ) {
+            return new Mod( this, loader );
         }
     }
-    public static final Descriptor<Pow> DESCRIPTOR = new Descr();
+    public static final Descriptor<Mod> DESCRIPTOR = new Descr();
     private final Port.Input inputX = new Port.Input( 0, this );
     private final Port.Input inputY = new Port.Input( 1, this );
 
-    public Pow( int id, Descriptor<?> descriptor ) {
-        super( id, descriptor, "^" );
+    public Mod( int id, Descriptor<?> descriptor ) {
+        super( id, descriptor, "mod" );
         inputs.add( inputX );
         inputs.add( inputY );
     }
 
-    public Pow( Descriptor<?> descriptor, Loader loader ) {
-        super( descriptor, loader, "^" );
+    public Mod( Descriptor<?> descriptor, Loader loader ) {
+        super( descriptor, loader, "mod" );
         inputs.add( inputX );
         inputs.add( inputY );
-    }
-
-    public Port.Input inputX() {
-        return inputX;
-    }
-
-    public Port.Input inputY() {
-        return inputY;
     }
 
     @Override
@@ -63,7 +55,8 @@ public class Pow extends AbstractOp {
         mv.visitMethodInsn( Opcodes.INVOKESTATIC, Type.getInternalName( getClass() ), "_op", "(FF)F" );
     }
 
-    public static float _op( float a, float b ) {
-        return (float) Math.pow( a, b );
+    public static float _op( float x, float y ) {
+//        System.out.println( x + ":" + y );
+        return x % y;
     }
 }

@@ -16,6 +16,7 @@ public class NodesFactory {
         ccs.rocky.nodes.ops.Abs.DESCRIPTOR,
         ccs.rocky.nodes.ops.Inv.DESCRIPTOR,
         ccs.rocky.nodes.ops.Div.DESCRIPTOR,
+        ccs.rocky.nodes.ops.Mod.DESCRIPTOR,
         ccs.rocky.nodes.ops.Log.DESCRIPTOR,
         ccs.rocky.nodes.ops.Exp.DESCRIPTOR,
         ccs.rocky.nodes.ops.Mul.DESCRIPTOR,
@@ -23,7 +24,7 @@ public class NodesFactory {
         ccs.rocky.nodes.ops.Sig.DESCRIPTOR,
         ccs.rocky.nodes.ops.Sum.DESCRIPTOR,
         ccs.rocky.nodes.ops.Sub.DESCRIPTOR,
-        ccs.rocky.nodes.gen.Sine.DESCRIPTOR,
+        ccs.rocky.nodes.ops.Sin.DESCRIPTOR,
         ccs.rocky.core.Module.In.DESCRIPTOR,
         ccs.rocky.core.Module.Out.DESCRIPTOR
     };

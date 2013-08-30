@@ -10,40 +10,40 @@ import org.objectweb.asm.Type;
  *
  * @author igel
  */
-public class Inv extends AbstractOp {
+public class Sin extends AbstractOp {
 
-    private static class Descr extends Descriptor<Inv> {
+    private static class Descr extends Descriptor<Sin> {
 
         @Override
         public String caption() {
-            return "inv";
+            return "sin";
         }
 
         @Override
         public String tag() {
-            return "inv";
+            return "sin";
         }
 
         @Override
-        public Inv createNode( int id ) {
-            return new Inv( id, this );
+        public Sin createNode( int id ) {
+            return new Sin( id, this );
         }
 
         @Override
-        public Inv loadNode( Loader loader ) {
-            return new Inv( this, loader );
+        public Sin loadNode( Loader loader ) {
+            return new Sin( this, loader );
         }
     }
-    public static final Descriptor<Inv> DESCRIPTOR = new Descr();
+    public static final Descriptor<Sin> DESCRIPTOR = new Descr();
     private final Port.Input input = new Port.Input( 0, this );
 
-    public Inv( int id, Descriptor<?> descriptor ) {
-        super( id, descriptor, "inv" );
+    public Sin( int id, Descriptor<?> descriptor ) {
+        super( id, descriptor, "sin" );
         inputs.add( input );
     }
 
-    public Inv( Descriptor<?> descriptor, Loader loader ) {
-        super( descriptor, loader, "inv" );
+    public Sin( Descriptor<?> descriptor, Loader loader ) {
+        super( descriptor, loader, "sin" );
         inputs.add( input );
     }
 
@@ -57,6 +57,6 @@ public class Inv extends AbstractOp {
     }
 
     public static float _op( float x ) {
-        return -x;
+        return (float) Math.sin( x );
     }
 }
