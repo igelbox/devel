@@ -1,5 +1,8 @@
-ant.properties
-local.properties
-nbandroid/
-private/
-res/drawable-*
+/bin/
+/gen/
+/ant.properties
+/local.properties
+/nbandroid/
+/private/
+/res/
+/proguard-project.txt
