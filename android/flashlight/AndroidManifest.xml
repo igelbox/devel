@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="ccs.flashlight"
           android:versionCode="1"
-          android:versionName="1.0">
+          android:versionName="1.1">
     <uses-permission android:name="android.permission.CAMERA" />
-    <application android:label="Фонарик" android:icon="@drawable/ic_launcher">
+    <application android:label="Фонарик" android:allowBackup="true">
         <activity android:name="MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -4,8 +4,9 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.hardware.Camera;
 import android.os.Bundle;
-import android.view.View;
+import android.view.Gravity;
 import android.widget.CompoundButton;
+import android.widget.LinearLayout;
 import android.widget.ToggleButton;
 
 public class MainActivity extends Activity {
@@ -16,8 +17,12 @@ public class MainActivity extends Activity {
     @Override
     public void onCreate( Bundle savedInstanceState ) {
         super.onCreate( savedInstanceState );
-        setContentView( R.layout.main );
-        final ToggleButton toggler = (ToggleButton) findViewById( R.id.toggler );
+        LinearLayout contentView = new LinearLayout( this );
+        contentView.setGravity( Gravity.CENTER );
+        contentView.setBackgroundColor( Color.WHITE );
+        setContentView( contentView );
+        final ToggleButton toggler = new ToggleButton( this );
+        contentView.addView( toggler );
         toggler.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
 
             public void onCheckedChanged( CompoundButton buttonView, boolean isChecked ) {
@@ -28,6 +33,8 @@ public class MainActivity extends Activity {
 
     void flashlight( boolean on ) {
         if ( on ) {
+            if ( cam != null )
+                return;
             cam = Camera.open();
             Camera.Parameters p = cam.getParameters();
             fmbk = p.getFlashMode();
@@ -35,11 +42,14 @@ public class MainActivity extends Activity {
             cam.setParameters( p );
             cam.startPreview();
         } else {
+            if ( cam == null )
+                return;
             Camera.Parameters p = cam.getParameters();
             p.setFlashMode( fmbk );
             cam.setParameters( p );
             cam.stopPreview();
             cam.release();
+            cam = null;
         }
     }
 }
