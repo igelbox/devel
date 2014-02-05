@@ -2,8 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <ctime>
 #include <GL/glut.h>
 #include <GL/glu.h>
+
+typedef unsigned long long nanos;
+
+nanos nanotime() {
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1E9L + ts.tv_nsec;
+}
 
 #define SZ 256
 float FTEMP = 0.15f;	//Minimal temperature for fire
@@ -19,7 +28,7 @@ int bq = 2;
 
 unsigned char firec[SZ][SZ][3];
 
-float time;
+float otime;
 int cnt;
 
 float vfx[SZ][SZ];
@@ -79,6 +88,7 @@ float fturb( float *f, int x, int y, int r ) {
 }
 
 void process( float dTime ) {
+    nanos t0 = nanotime();
     float ovfx[SZ][SZ];
     float ovfy[SZ][SZ];
     memcpy(ovfx, vfx, sizeof(vfx));
@@ -129,7 +139,8 @@ void process( float dTime ) {
 	    addFixel( fo[0], px+1, py+0, ofo[j][i]*(     kx)*(1.0f-ky) );
 
 	}
-
+    nanos t1 = nanotime();
+    printf("proc:%f\n", (t1 - t0) / 1E9);
 }
 
 void grav( float dTime ) {
@@ -249,13 +260,13 @@ void redisplay() {
 };
 
 void idle() {
+    nanos t0 = nanotime();
     float ctime = (float)glutGet(GLUT_ELAPSED_TIME)/1000.0f;
-    float dTime = (ctime-time);
+    float dTime = (ctime - otime);
     dTime = 0.01f;
     grav( dTime );
     frict( dTime );
     process( dTime );
-    glutPostRedisplay();
     bblur(vfx[0], 1 );
     bblur(vfy[0], 1 );
     bblur( ft[0], 1 );
@@ -272,8 +283,11 @@ void idle() {
 	addFixel(  ft[0], SZ/2+i, 3, 0.3f);
     }
     fire( dTime );
-    time = ctime;
+    otime = ctime;
 //    if (cnt < 4) init( SZ/2, SZ/10, 0.1f, 2048 );
+    nanos t1 = nanotime();
+    printf("idle:%f\n", (t1 - t0) / 1E9);
+    glutPostRedisplay();
     cnt++;
 };
 
