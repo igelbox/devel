@@ -104,6 +104,7 @@ void process( float dTime ) {
     float ofo[SZ][SZ];
     memcpy(ofo, fo, sizeof(fo));
     memset(fo, 0, sizeof(fo));
+    #pragma omp parallel for
     for ( int j = 0; j < SZ; j++ )
 	for ( int i = 0; i < SZ; i++ ) {
 	    float px = ((float)i/(float)SZ + ovfx[j][i]*dTime)*(float)SZ;
