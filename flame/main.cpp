@@ -309,6 +309,7 @@ int main( int argc, char *argv[] ) {
     for ( int j = 0; j < SZ; j++ )
 	for ( int i = 0; i < SZ; i++ ) fo[j][i] = 1.0f;
     glutInit(&argc, argv);
+    glutInitWindowSize(SZ, SZ);
     glutInitDisplayMode(GLUT_DOUBLE);
     glutCreateWindow("fLAME!");
     glutDisplayFunc(&redisplay);
