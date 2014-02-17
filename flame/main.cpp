@@ -77,14 +77,9 @@ void init( int px, int py, float rr, int cnt) {
 float fturb( float *f, int x, int y, int r ) {
     if (!r) return 0.0f;
     float rs = 0.0f;
-    float dc = 0.0f;
-    for ( int i = 1; i < r; i++ ) {
-	float k = pow(1.0f-(float)i/(float)r, 0.33f);
-	rs += k*(getFixel(f, x-i, y-i)+getFixel(f, x+i, y+i) - getFixel(f, x+i, y-i)-getFixel(f, x-i, y+i))/4.0f;
-	dc += k;
-    }
-    if (!dc) return 0.0f;
-    return rs/dc;
+    for (int i = 1; i < r; i++)
+        rs += getFixel(f, x - i, y - i) + getFixel(f, x + i, y + i) - getFixel(f, x + i, y - i) - getFixel(f, x - i, y + i);
+    return rs / r / 4.0f;
 }
 
 void process( float dTime ) {
@@ -111,8 +106,8 @@ void process( float dTime ) {
 	    float py = ((float)j/(float)SZ + ovfy[j][i]*dTime)*(float)SZ;
 	    float kx = px-(float)((int)px);  float ky = py-(float)((int)py);
 
-	    float ovx = (1.0f-FTURB)*getFixel(ovfx[0], i, j) + FTURB*fturb(ovfy[0], i, j, FTRRD);
-	    float ovy = (1.0f-FTURB)*getFixel(ovfy[0], i, j) + FTURB*fturb(ovfx[0], i, j, FTRRD);
+	    float ovx = (1.0f-FTURB)*ovfx[j][i] + FTURB*fturb(ovfy[0], i, j, FTRRD);
+	    float ovy = (1.0f-FTURB)*ovfy[j][i] + FTURB*fturb(ovfx[0], i, j, FTRRD);
 
 	    addFixel( vfx[0], px+0, py+0, ovx*(1.0f-kx)*(1.0f-ky) );
 	    addFixel( vfx[0], px+0, py+1, ovx*(1.0f-kx)*(     ky) );
