@@ -298,6 +298,12 @@ void keyboard( unsigned char key, int x, int y ) {
     }
 };
 
+void motion(int x, int y) {
+    x = x * SZ / glutGet(GLUT_WINDOW_WIDTH);
+    y = y * SZ / glutGet(GLUT_WINDOW_HEIGHT);
+    init(x, SZ - y, 0.01f, 64);
+}
+
 int main( int argc, char *argv[] ) {
     for ( int j = 0; j < SZ; j++ )
 	for ( int i = 0; i < SZ; i++ ) fo[j][i] = 1.0f;
@@ -308,6 +314,7 @@ int main( int argc, char *argv[] ) {
     glutDisplayFunc(&redisplay);
     glutIdleFunc(&idle);
     glutKeyboardFunc(&keyboard);
+    glutMotionFunc(&motion);
     glutMainLoop();
     return 0;
 };
