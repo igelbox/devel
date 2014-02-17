@@ -268,15 +268,13 @@ void idle() {
     bblur( ft[0], 1 );
     bblur( ff[0], 1 );
     bblur( fo[0], 1 );
-//    init(1*SZ/3, SZ/8, 0.1f, 64);
-//    init(2*SZ/3, SZ/8, 0.1f, 64);
-//    for ( int i = SZ/10; i < 9*SZ/10; i++ ) init( i, 1, 0.03, 1);
-    for ( int i = -SZ/4; i <= SZ/4; i++ ) {
-	addFixel( vfx[0], SZ/2+i, 3, frand()*2.0f);
-	addFixel( vfy[0], SZ/2+i, 3, (frand()*0.3f+0.7f)*2.0f);
-	addFixel(  fo[0], SZ/2+i, 3, 1.0f);
-	addFixel(  ff[0], SZ/2+i, 3, 1.0f);
-	addFixel(  ft[0], SZ/2+i, 3, 0.3f);
+    for (int i = 0; i < SZ / 4; i++) {
+        int x = rand() % SZ, y = 0;
+        addFixel(vfx[0], x, y, frand()*2.0f);
+        addFixel(vfy[0], x, y, (frand()*0.3f + 0.7f)*2.0f);
+        addFixel(fo[0], x, y, 1.0f);
+        addFixel(ff[0], x, y, 1.0f);
+        addFixel(ft[0], x, y, 0.3f);
     }
     fire( dTime );
     otime = ctime;
